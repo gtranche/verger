@@ -106,3 +106,25 @@ private final class Steps: @unchecked Sendable {
     func add(_ value: RuntimeInstaller.Step) { lock.lock(); values.append(value); lock.unlock() }
     var all: [RuntimeInstaller.Step] { lock.lock(); defer { lock.unlock() }; return values }
 }
+
+/// La vraie release, depuis GitHub : ~400 Mo telecharges et un vrai `cidre setup`.
+/// Ne tourne que sur demande, dans un dossier jetable et sans toucher a Steam :
+///   VERGER_ESSAI_RESEAU=/dossier/jetable CIDRE_SANS_STEAM=1 Scripts/test.sh --filter installeLaVraieRelease
+@Test(.enabled(if: ProcessInfo.processInfo.environment["VERGER_ESSAI_RESEAU"] != nil))
+func installeLaVraieRelease() async throws {
+    let home = URL(fileURLWithPath: ProcessInfo.processInfo.environment["VERGER_ESSAI_RESEAU"]!)
+    let release = try await RuntimeInstaller.latestRelease(environment: [:])
+    #expect(release.archive.lastPathComponent == RuntimeInstaller.assetName)
+    #expect(release.sizeBytes > 100_000_000)
+
+    let steps = Steps()
+    let cli = try await RuntimeInstaller(home: home).install(release) { steps.add($0) }
+    let status = try await cli.status()
+    #expect(status.version == release.version)
+    #expect(status.runtimePresent && status.prefixReady && status.steamcmdPresent)
+    #expect(steps.all.contains { if case let .downloading(done, total) = $0 { done == total && total > 0 } else { false } })
+    #expect(steps.all.contains(.configuring("6/6 Integration Steam")))
+    // installee, cette version n'appelle plus de mise a jour
+    #expect(!release.isNewer(than: status.version))
+    print("installe : Cidre \(status.version) dans \(status.root)")
+}
