@@ -119,14 +119,10 @@ code {
 }
 
 .marque {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
   font: 600 1.35rem/1 var(--serif);
   color: var(--encre);
   text-decoration: none;
 }
-.marque svg { width: 1.3rem; height: 1.3rem; color: var(--accent); }
 
 .menu {
   display: flex;
@@ -163,6 +159,11 @@ code {
 /* --- Ouverture ---------------------------------------------------------- */
 
 .ouverture { padding-block: clamp(2rem, 7vw, 5rem) 0; }
+
+.ouverture .icone {
+  width: clamp(5rem, 12vw, 7rem);
+  margin: 0 0 1rem -0.5rem;   /* l'icône porte sa propre marge transparente */
+}
 
 .ouverture h1 {
   font-size: clamp(2.1rem, 6vw, 3.75rem);

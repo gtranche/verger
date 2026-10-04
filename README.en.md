@@ -4,7 +4,7 @@
 
 **The game library for Apple Silicon Macs that runs your Windows games.** Verger installs, tunes and launches your games — the ones on your Steam account and the others — without ever opening a Terminal.
 
-[Version française](README.md) · [Download the latest version](https://github.com/gtranche/verger/releases/latest)
+[Verger's website](https://gtranche.github.io/verger/en/) · [Version française](README.md) · [Download the latest version](https://github.com/gtranche/verger/releases/latest)
 
 ![Verger's library](docs/captures/library-en.png)
 

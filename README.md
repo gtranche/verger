@@ -4,7 +4,7 @@
 
 **La bibliothèque de jeux pour Mac Apple Silicon qui fait tourner tes jeux Windows.** Verger installe, règle et lance tes jeux — ceux de ton compte Steam comme les autres — sans jamais ouvrir un Terminal.
 
-[English version](README.en.md) · [Télécharger la dernière version](https://github.com/gtranche/verger/releases/latest)
+[Site de Verger](https://gtranche.github.io/verger/) · [English version](README.en.md) · [Télécharger la dernière version](https://github.com/gtranche/verger/releases/latest)
 
 ![La bibliothèque de Verger](docs/captures/bibliotheque.png)
 
