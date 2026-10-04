@@ -8,7 +8,9 @@ R=$(cd "$(dirname "$0")/.." && pwd)
 # porte la version de la derniere release, et ne se propose donc pas de mise a jour).
 VERSION=${VERGER_VERSION:-$(git -C "$R" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}
 VERSION=${VERSION:-0.1.0}
-APP="$R/build/Verger.app"
+# VERGER_BUILD_DIR : construire ailleurs que dans build/ (pour essayer une
+# version sans remplacer l'application qu'on est en train d'utiliser).
+APP="${VERGER_BUILD_DIR:-$R/build}/Verger.app"
 
 swift build --package-path "$R" -c release --arch arm64
 BIN=$(swift build --package-path "$R" -c release --arch arm64 --show-bin-path)/Verger
@@ -22,6 +24,8 @@ mv "$APP/Contents/MacOS/Verger.nouveau" "$APP/Contents/MacOS/Verger"
 # est dans Resources/en.lproj.
 mkdir -p "$APP/Contents/Resources"
 cp -R "$R/Resources/"*.lproj "$APP/Contents/Resources/"
+# L'icone : Scripts/icone.sh la fabrique a partir de Resources/AppIcon-source.png.
+cp "$R/Resources/AppIcon.icns" "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -36,6 +40,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
    <key>CFBundleVersion</key><string>$VERSION</string>
    <key>LSMinimumSystemVersion</key><string>14.0</string>
    <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
+   <key>CFBundleIconFile</key><string>AppIcon</string>
    <key>CFBundleDevelopmentRegion</key><string>fr</string>
    <key>CFBundleLocalizations</key><array><string>fr</string><string>en</string></array>
    <key>NSHighResolutionCapable</key><true/>

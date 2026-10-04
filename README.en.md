@@ -1,3 +1,5 @@
+<img src="docs/captures/icone.png" width="128" alt="Verger icon" align="right">
+
 # Verger
 
 **The game library for Apple Silicon Macs that runs your Windows games.** Verger installs, tunes and launches your games — the ones on your Steam account and the others — without ever opening a Terminal.

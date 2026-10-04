@@ -243,3 +243,4 @@
 "Connecté. La session est mémorisée." = "Signed in. The session is remembered.";
 "Se connecter" = "Sign In";
 "Valider" = "Submit";
+"Tu n'es pas connecté à Steam : cette liste date de ta dernière connexion." = "You are not signed in to Steam: this list dates from your last sign-in.";

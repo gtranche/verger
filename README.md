@@ -1,3 +1,5 @@
+<img src="docs/captures/icone.png" width="128" alt="Icône de Verger" align="right">
+
 # Verger
 
 **La bibliothèque de jeux pour Mac Apple Silicon qui fait tourner tes jeux Windows.** Verger installe, règle et lance tes jeux — ceux de ton compte Steam comme les autres — sans jamais ouvrir un Terminal.

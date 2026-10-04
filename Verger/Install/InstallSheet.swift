@@ -41,11 +41,29 @@ struct InstallSheet: View {
                 .padding(.bottom, 10)
 
             Divider()
+            // La liste peut venir du cache d'une connexion precedente : sans
+            // session, elle s'affiche mais rien ne s'installerait.
+            if library.ownedState == .loaded, library.steamSession?.connected == false {
+                HStack(spacing: 10) {
+                    Label("Tu n'es pas connecté à Steam : cette liste date de ta dernière connexion.", systemImage: "person.badge.key")
+                        .font(.callout)
+                    Spacer()
+                    Button("Se connecter…") { loggingIn = true }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.bar)
+                Divider()
+            }
             content
         }
         .frame(width: 560, height: 560)
+        .sheet(isPresented: $loggingIn, onDismiss: { Task { await library.checkSession() } }) {
+            LoginSheet().environment(library)
+        }
         .task {
             if library.ownedState == .idle { await library.loadOwned() }
+            await library.checkSession()
         }
     }
 
@@ -64,7 +82,7 @@ struct InstallSheet: View {
                 Button("Se connecter à Steam…") { loggingIn = true }
                     .buttonStyle(.borderedProminent)
             }
-            .sheet(isPresented: $loggingIn) { LoginSheet().environment(library) }
+
         case let .failed(message):
             ContentUnavailableView {
                 Label("Liste indisponible", systemImage: "exclamationmark.triangle")
