@@ -34,6 +34,8 @@ final class LibraryModel {
     /// Jeux dont `cidre play` n'a pas encore rendu la main.
     private(set) var running: Set<String> = []
     var lastError: String?
+    /// Une action vient d'echouer faute de session Steam : il faut ouvrir la connexion.
+    var loginNeeded = false
     var filter: Filter = .all
     var search = ""
 
@@ -245,7 +247,7 @@ final class LibraryModel {
                 // arrete par l'utilisateur : SteamCMD reprendra ou il en etait
             } catch CidreError.steamSessionMissing {
                 ownedState = .sessionMissing
-                lastError = CidreError.steamSessionMissing.localizedDescription
+                loginNeeded = true
             } catch {
                 lastError = error.localizedDescription
             }

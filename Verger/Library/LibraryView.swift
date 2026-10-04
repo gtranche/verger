@@ -64,6 +64,12 @@ struct LibraryView: View {
             .sheet(isPresented: $loggingIn) {
                 LoginSheet().environment(library)
             }
+            .onChange(of: library.loginNeeded) { _, needed in
+                guard needed else { return }
+                library.loginNeeded = false
+                // la fenetre « Installer un jeu Steam » propose deja la connexion
+                if !installingFromSteam { loggingIn = true }
+            }
             .alert("Une erreur est survenue", isPresented: errorShown) {
                 Button("OK", role: .cancel) {}
             } message: {
