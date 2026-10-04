@@ -72,7 +72,7 @@ public struct RuntimeRelease: Equatable, Sendable {
     }
 
     /// Compare deux versions « 1.10.2 » champ par champ (un « v » initial est ignore).
-    static func compare(_ a: String, _ b: String) -> ComparisonResult {
+    public static func compare(_ a: String, _ b: String) -> ComparisonResult {
         func fields(_ s: String) -> [Int] {
             s.drop { !$0.isNumber }.split(separator: ".").map { Int($0.prefix { $0.isNumber }) ?? 0 }
         }
@@ -216,15 +216,22 @@ public struct RuntimeInstaller: Sendable {
         try Task.checkCancellation()
 
         // 3. le runtime se configure lui-meme
+        try await Self.configure(cli, onStep: onStep)
+        return cli
+    }
+
+    /// `cidre setup` : (re)configure un runtime en place, en annoncant ses etapes.
+    public static func configure(
+        _ cli: CidreCLI, onStep: @escaping @Sendable (Step) -> Void
+    ) async throws {
         onStep(.configuring("Préparation"))
-        let setup = try await Self.run("/bin/sh", [cli.executable.path, "setup"]) { line in
+        let setup = try await run("/bin/sh", [cli.executable.path, "setup"]) { line in
             // `== 2/6 Prefixe Wine ==`
             if line.hasPrefix("== "), line.hasSuffix(" ==") {
                 onStep(.configuring(String(line.dropFirst(3).dropLast(3))))
             }
         }
         guard setup.status == 0 else { throw RuntimeError.setupFailed(setup.lastLines) }
-        return cli
     }
 
     // MARK: Plomberie
@@ -300,15 +307,20 @@ private final class LineBuffer: @unchecked Sendable {
 }
 
 /// Telecharge un fichier en rapportant l'avancement ; rend le fichier temporaire.
-private final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     private let onProgress: @Sendable (Int64, Int64) -> Void
     private var continuation: CheckedContinuation<URL, Error>?
     private let lock = NSLock()
 
-    private init(onProgress: @escaping @Sendable (Int64, Int64) -> Void) { self.onProgress = onProgress }
+    private let suffix: String
 
-    static func download(_ url: URL, onProgress: @escaping @Sendable (Int64, Int64) -> Void) async throws -> URL {
-        let delegate = Downloader(onProgress: onProgress)
+    private init(suffix: String, onProgress: @escaping @Sendable (Int64, Int64) -> Void) {
+        self.suffix = suffix
+        self.onProgress = onProgress
+    }
+
+    static func download(_ url: URL, suffix: String = ".tar.xz", onProgress: @escaping @Sendable (Int64, Int64) -> Void) async throws -> URL {
+        let delegate = Downloader(suffix: suffix, onProgress: onProgress)
         let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
         let task = session.downloadTask(with: url)
@@ -344,7 +356,7 @@ private final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked
         }
         // Le fichier disparait au retour de cette methode : on le met de cote.
         let kept = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cidre-runtime-\(UUID().uuidString).tar.xz")
+            .appendingPathComponent("verger-\(UUID().uuidString)\(suffix)")
         do {
             try FileManager.default.moveItem(at: location, to: kept)
             finish(.success(kept))

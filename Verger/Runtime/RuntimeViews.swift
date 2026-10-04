@@ -61,9 +61,24 @@ struct RuntimeMissingView: View {
 /// Les bandeaux au-dessus de la grille : mise a jour de Cidre, prerequis manquants.
 struct RuntimeBanners: View {
     @Environment(LibraryModel.self) private var library
+    @Environment(AppUpdateModel.self) private var updater
 
     var body: some View {
         VStack(spacing: 0) {
+            if let update = updater.available {
+                banner {
+                    if case let .downloading(done, total) = updater.state {
+                        ProgressView(value: total > 0 ? min(Double(done) / Double(total), 1) : 0)
+                        Text("Téléchargement de Verger \(update.version)…")
+                    } else {
+                        Label("Verger \(update.version) est disponible (tu as la \(updater.currentVersion ?? "?")).", systemImage: "leaf")
+                        Spacer()
+                        Button("Mettre à jour et relancer") { Task { await updater.install() } }
+                            .disabled(!library.running.isEmpty)
+                            .help(library.running.isEmpty ? "Verger se remplace et se relance." : "Attends la fin du jeu en cours.")
+                    }
+                }
+            }
             if let step = library.runtimeStep {
                 banner {
                     RuntimeProgress(step: step) { library.cancelRuntimeInstall() }

@@ -1,0 +1,27 @@
+# Publie une version de Verger : sur un tag vX.Y.Z, teste, construit Verger.app
+# et l'attache a la release sous le nom Verger.zip. C'est cette archive que
+# Verger telecharge pour se mettre a jour lui-meme.
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  publier:
+    runs-on: macos-26   # Apple Silicon, Swift 6.2
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        run: Scripts/test.sh
+      - name: Construire Verger.app
+        run: VERGER_VERSION="${GITHUB_REF_NAME#v}" Scripts/bundle.sh
+      - name: Archiver
+        run: ditto -c -k --keepParent build/Verger.app Verger.zip
+      - name: Publier la release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Verger.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -4,7 +4,10 @@
 #   Scripts/bundle.sh [--open]
 set -eu
 R=$(cd "$(dirname "$0")/.." && pwd)
-VERSION=${VERGER_VERSION:-0.1.0}
+# La version : celle qu'on donne, sinon le dernier tag (une construction locale
+# porte la version de la derniere release, et ne se propose donc pas de mise a jour).
+VERSION=${VERGER_VERSION:-$(git -C "$R" describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}
+VERSION=${VERSION:-0.1.0}
 APP="$R/build/Verger.app"
 
 swift build --package-path "$R" -c release --arch arm64

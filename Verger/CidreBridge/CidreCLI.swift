@@ -115,7 +115,25 @@ public struct CidreCLI: Sendable {
         _ = try await checked(["unset", id] + (key.map { [$0.rawValue] } ?? []))
     }
 
+    /// L'identifiant qui designe les reglages generaux dans `cidre set` / `cidre unset`.
+    public static let defaultsID = "defaut"
+
+    /// `cidre options --json` : les reglages generaux.
+    public func defaultOptions() async throws -> DefaultOptions {
+        try await json(["options", "--json"])
+    }
+
     // MARK: Steam
+
+    /// `cidre session --json` : le compte, et si sa session est memorisee.
+    public func session() async throws -> SteamSession {
+        try await json(["session", "--json"])
+    }
+
+    /// `cidre logout` : oublie la session Steam. Les jeux installes restent jouables.
+    public func logout() async throws {
+        _ = try await checked(["logout"])
+    }
 
     /// `cidre library --json` : les jeux que possede le compte, installes ou non.
     /// `refresh` redemande les licences a Steam au lieu de lire le cache.

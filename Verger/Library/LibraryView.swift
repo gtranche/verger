@@ -5,6 +5,8 @@ import UniformTypeIdentifiers
 /// Le verger : la grille des jeux, et la fiche du jeu selectionne.
 struct LibraryView: View {
     @Environment(LibraryModel.self) private var library
+    @Environment(AppUpdateModel.self) private var updater
+    @Environment(\.openSettings) private var openSettings
     @State private var selection: Game.ID?
     @State private var installingFromSteam = false
     @State private var loggingIn = false
@@ -39,6 +41,12 @@ struct LibraryView: View {
                         Label("Ajouter un jeu", systemImage: "plus")
                     }
                     .disabled(library.cli == nil)
+                }
+                ToolbarItem {
+                    SettingsLink {
+                        Label("Réglages", systemImage: "gearshape")
+                    }
+                    .help("Réglages : Cidre, compte Steam, options générales, Verger")
                 }
                 ToolbarItem {
                     Button {
@@ -79,6 +87,7 @@ struct LibraryView: View {
                 await library.reload()
                 await library.checkRuntime()
                 await library.checkUpdates()
+                await updater.check()
                 // `Verger --jeu <id>` ouvre directement la fiche d'un jeu
                 let arguments = CommandLine.arguments
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
@@ -86,6 +95,8 @@ struct LibraryView: View {
                 }
                 // `Verger --connexion` ouvre la fenetre de connexion a Steam
                 if arguments.contains("--connexion") { loggingIn = true }
+                // `Verger --reglages` ouvre les reglages
+                if arguments.contains("--reglages") { openSettings() }
             }
     }
 

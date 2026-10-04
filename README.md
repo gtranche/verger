@@ -24,7 +24,10 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Fiche d'un jeu (taille, chemin, options actives) | `cidre info <id> --json` |
 | Lancer un jeu | `cidre play <id>` |
 | Régler une option de lancement d'un jeu | `cidre set <id> <option> <valeur>` |
-| Revenir au réglage livré par Cidre | `cidre unset <id> [option]` |
+| Ne plus forcer une option pour un jeu | `cidre unset <id> [option]` |
+| Réglages généraux (tous les jeux) | `cidre options --json`, `cidre set defaut …`, `cidre unset defaut …` |
+| Compte Steam et état de la session | `cidre session --json` |
+| Se déconnecter de Steam | `cidre logout` |
 | Les jeux Steam du compte, installés ou non | `cidre library --json [--refresh]` |
 | Télécharger ou mettre à jour un jeu Windows hors client | `cidre dl <appid> [windows\|macos]` |
 | Les jeux installés dont une version plus récente est publiée | `cidre updates --json [--refresh]` |
@@ -84,7 +87,7 @@ Un panneau de réglages **par jeu**, avec des interrupteurs pour **activer/désa
 | Correctif LuaJIT | `PROTON_OUVERT_LUAJIT=1` | requis VT2 |
 | Plein écran / encoche | (à venir côté Cidre) | couvrir l'encoche comme le natif |
 
-Dans la fiche du jeu, chaque interrupteur dit ce qu'il fait gagner et ce qu'il risque. Une pastille marque les options que tu as réglées toi-même ; « Rétablir les réglages de Cidre » y revient. Le changement s'applique au prochain lancement.
+Trois niveaux, du plus faible au plus fort : ce que Cidre livre, tes **réglages généraux** (Réglages → Options, pour tous les jeux), et ce que tu **forces pour un jeu** dans sa fiche. Chaque interrupteur dit ce qu'il fait gagner et ce qu'il risque ; une pastille marque ce qui est réglé à ce niveau, et la flèche à côté y renonce. Le changement s'applique au prochain lancement.
 
 **Modèle :** un profil **par défaut** + des **surcharges par jeu**, dans un fichier de données que `cidre play` lit et que Verger écrit par `cidre set` : `~/Library/Application Support/Cidre/profils.toml`.
 
@@ -107,7 +110,18 @@ Verger ne garde ni mot de passe ni jeton. Il prête un terminal à SteamCMD (`ci
 
 > Pourquoi pas steamctl : `python-steam` renvoie « Invalid Password » sur l'ancien flux de login (déprécié par Steam). Abandonné.
 
-### 5. Sauvegardes
+### 5. Réglages (⌘,)
+- **Cidre** : la version installée et la dernière publiée, l'emplacement, l'état de chaque pièce (runtime, préfixe Wine, SteamCMD, bibliothèques), la mise à jour et la reconfiguration (`cidre setup`).
+- **Steam** : le compte, l'état de la session, se connecter, se déconnecter, changer de compte. Déconnecté, les jeux installés restent jouables : la session ne sert qu'à lire la liste des jeux, à en installer et à les mettre à jour. Un jeu Steam a en revanche besoin du client Steam ouvert pendant la partie.
+- **Options** : les réglages généraux de lancement.
+- **Verger** : sa version et sa mise à jour.
+
+### 6. Mise à jour de Verger
+Verger se met à jour depuis ses releases GitHub, séparément de Cidre. Au lancement il compare sa version à la dernière release ; « Mettre à jour et relancer » télécharge `Verger.zip`, vérifie qu'il contient bien une application à la signature intacte, la met à la place de l'ancienne et relance. Si quoi que ce soit échoue, l'ancienne version reste en place.
+
+Publier une version : pousser un tag `vX.Y.Z`. Le workflow GitHub Actions teste, construit `Verger.app` et l'attache à la release.
+
+### 7. Sauvegardes
 État de synchro par jeu + bouton backup/restore (`cidre sync`), au-dessus de notre sync iCloud (Steam Cloud ne résout pas les roots Windows sur mac).
 
 ## Stack technique recommandée
@@ -143,7 +157,8 @@ Scripts/test.sh
 - **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec une fenêtre de connexion au-dessus de SteamCMD ; le login QR reste à faire.
 - **Installation et mise à jour de Cidre par Verger** (`cidre status`, `cidre setup`). **Fait.**
 - **Mises à jour des jeux** (`cidre updates`). **Fait.**
-- **Phase 4 — polish** : saves, auto-update de Verger lui-même (séparé du runtime).
+- **Réglages** (état de Cidre, compte Steam, options générales) et **mise à jour de Verger par GitHub**. **Fait.**
+- **Phase 4 — polish** : saves, connexion par QR code.
 
 ## Structure du dépôt
 
@@ -157,6 +172,8 @@ verger/
     Install/           # installer un jeu Steam du compte
     Login/             # fenêtre de connexion à Steam
     Runtime/           # installer et mettre à jour Cidre
+    Settings/          # réglages : Cidre, Steam, options générales, Verger
+    Updater/           # mise à jour de Verger lui-même
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)
   Tests/               # tests du pont
   Scripts/             # bundle.sh (Verger.app), test.sh

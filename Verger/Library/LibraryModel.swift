@@ -39,6 +39,10 @@ final class LibraryModel {
     var filter: Filter = .all
     var search = ""
 
+    /// Le compte Steam et l'etat de sa session ; `nil` tant qu'on ne l'a pas demande.
+    private(set) var steamSession: SteamSession?
+    private(set) var checkingSession = false
+
     private(set) var ownedState: OwnedState = .idle
     private(set) var owned: [OwnedGame] = []
     /// Les jeux Steam installes dont une version plus recente est publiee, par appid.
@@ -151,6 +155,48 @@ final class LibraryModel {
         if ownedState == .loaded { await loadOwned() }
     }
 
+    // MARK: Reglages generaux
+
+    func defaultOptions() async -> DefaultOptions? {
+        try? await cli?.defaultOptions()
+    }
+
+    /// Applique un changement aux reglages generaux et les rend a jour.
+    func changeDefaultOptions(_ change: @escaping @Sendable (CidreCLI) async throws -> Void) async -> DefaultOptions? {
+        guard let cli else { return nil }
+        do {
+            try await change(cli)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        return try? await cli.defaultOptions()
+    }
+
+    // MARK: Session Steam
+
+    /// Demande a Cidre si la session Steam est memorisee (`cidre session`).
+    func checkSession() async {
+        guard let cli else { return }
+        checkingSession = true
+        defer { checkingSession = false }
+        steamSession = try? await cli.session()
+        if steamSession?.connected == true, ownedState == .sessionMissing { ownedState = .idle }
+    }
+
+    /// Oublie la session Steam. Les jeux installes restent jouables ; il faudra
+    /// se reconnecter pour installer ou mettre a jour.
+    func logout() async {
+        guard let cli else { return }
+        do {
+            try await cli.logout()
+        } catch {
+            lastError = error.localizedDescription
+        }
+        owned = []
+        ownedState = .idle
+        await checkSession()
+    }
+
     // MARK: Mises a jour des jeux
 
     /// Regarde quels jeux Steam installes ont une version plus recente publiee.
@@ -208,6 +254,28 @@ final class LibraryModel {
             runtimeStep = nil
             runtimeTask = nil
             await reload()
+            await checkRuntime()
+        }
+    }
+
+    /// Relance `cidre setup` sur le runtime en place (prefixe, pont Steam, SteamCMD).
+    func reconfigureRuntime() {
+        guard let cli, runtimeTask == nil else { return }
+        runtimeStep = .configuring("Préparation")
+        runtimeTask = Task {
+            do {
+                try await RuntimeInstaller.configure(cli) { step in
+                    Task { @MainActor in
+                        if self.runtimeStep != nil { self.runtimeStep = step }
+                    }
+                }
+            } catch is CancellationError {
+                // arrete par l'utilisateur
+            } catch {
+                lastError = error.localizedDescription
+            }
+            runtimeStep = nil
+            runtimeTask = nil
             await checkRuntime()
         }
     }

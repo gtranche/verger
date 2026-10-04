@@ -119,6 +119,10 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
     public var compilerThreads = 0
     public var eacUntrusted = false
     public var luajit = false
+    /// Vrai plein ecran macOS (couvre l'encoche). `nil` : ce Cidre ne connait pas l'option.
+    public var fullscreen: Bool?
+    /// Game Mode de macOS force pendant le jeu. `nil` : ce Cidre ne connait pas l'option.
+    public var gameMode: Bool?
 
     public init() {}
 
@@ -128,6 +132,8 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         case asyncShaders = "async"
         case compilerThreads = "fils_compilation"
         case eacUntrusted = "eac_untrusted"
+        case fullscreen = "plein_ecran"
+        case gameMode = "gamemode"
     }
 
     typealias CodingKeys = Key
@@ -142,6 +148,44 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         compilerThreads = try c.decodeIfPresent(Int.self, forKey: .compilerThreads) ?? d.compilerThreads
         eacUntrusted = try c.decodeIfPresent(Bool.self, forKey: .eacUntrusted) ?? d.eacUntrusted
         luajit = try c.decodeIfPresent(Bool.self, forKey: .luajit) ?? d.luajit
+        fullscreen = try c.decodeIfPresent(Bool.self, forKey: .fullscreen)
+        gameMode = try c.decodeIfPresent(Bool.self, forKey: .gameMode)
+    }
+}
+
+/// Les reglages generaux (`cidre options --json`) : ce que suit tout jeu qui n'a
+/// pas son propre reglage.
+public struct DefaultOptions: Decodable, Sendable {
+    public let options: LaunchOptions
+    /// Les options que l'utilisateur a changees par rapport a ce que livre Cidre.
+    public let overridden: Set<LaunchOptions.Key>
+
+    enum CodingKeys: String, CodingKey {
+        case options
+        case overrides = "options_perso"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        options = try c.decode(LaunchOptions.self, forKey: .options)
+        let overrides = try c.decodeIfPresent([String: Ignored].self, forKey: .overrides) ?? [:]
+        overridden = Set(overrides.keys.compactMap(LaunchOptions.Key.init(rawValue:)))
+    }
+
+    private struct Ignored: Decodable {
+        init(from decoder: Decoder) throws {}
+    }
+}
+
+/// Le compte Steam et l'etat de sa session (`cidre session --json`).
+public struct SteamSession: Decodable, Equatable, Sendable {
+    public let account: String
+    /// SteamCMD a une session memorisee : on peut installer et mettre a jour.
+    public let connected: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case account = "compte"
+        case connected = "connecte"
     }
 }
 
