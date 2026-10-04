@@ -137,7 +137,7 @@ struct DownloadStatus: View {
             VStack(alignment: .leading, spacing: 2) {
                 if progress.totalBytes > 0 {
                     ProgressView(value: progress.fraction)
-                    Text("\(progress.doneBytes.formatted(.byteCount(style: .file))) sur \(progress.totalBytes.formatted(.byteCount(style: .file)))")
+                    Text("\(L10n.bytes(progress.doneBytes)) sur \(L10n.bytes(progress.totalBytes))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 } else {

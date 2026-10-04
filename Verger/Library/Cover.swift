@@ -2,17 +2,21 @@ import SwiftUI
 
 /// La vignette d'un jeu, au format portrait de la bibliotheque Steam.
 ///
-/// On cherche, dans l'ordre : la jaquette portrait que le client Steam a deja
-/// en cache, celle du CDN de Steam, puis l'image d'en-tete (paysage) du jeu,
-/// en cache puis sur le CDN. Tous les jeux n'ont pas de jaquette portrait, et
+/// On cherche, dans l'ordre : la jaquette posee par l'utilisateur, la jaquette
+/// portrait que le client Steam a deja en cache, celle du CDN de Steam, puis
+/// l'image d'en-tete (paysage) du jeu, en cache puis sur le CDN. Tous les jeux n'ont pas de jaquette portrait, et
 /// certains (outils, jeux hors Steam) n'ont aucune image : il reste alors un
 /// carton au nom du jeu.
 struct Cover: View {
-    /// `nil` pour un jeu hors Steam : pas d'image, un carton a son nom.
+    /// L'identifiant du jeu dans Verger (appid ou `local-...`) : la cle de la
+    /// jaquette que l'utilisateur a pu poser.
+    let id: String
+    /// `nil` pour un jeu hors Steam : rien a chercher chez Steam.
     let appid: Int?
     let name: String
 
     @State private var art: Art?
+    private var store: CoverStore { CoverStore.shared }
 
     var body: some View {
         ZStack {
@@ -32,8 +36,13 @@ struct Cover: View {
         }
         .aspectRatio(2.0 / 3.0, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .task(id: appid) {
-            art = await Self.art(for: appid)
+        // la revision change quand une jaquette est posee ou retiree
+        .task(id: "\(id)#\(store.revision)") {
+            if let custom = store.customCover(for: id), let image = NSImage(contentsOf: custom) {
+                art = .portrait(image)
+            } else {
+                art = await Self.art(for: appid)
+            }
         }
     }
 

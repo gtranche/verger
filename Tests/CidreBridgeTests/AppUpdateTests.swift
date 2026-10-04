@@ -108,3 +108,28 @@ func metAJourDepuisGitHub() async throws {
     #expect(try await RuntimeInstaller.run("/usr/bin/codesign", ["--verify", "--deep", app.path]).status == 0)
     print("mis a jour : Verger \(release.version)")
 }
+
+@Test func steamGridDB() throws {
+    let found: [SteamGridDB.Match] = try SteamGridDB.decode(Data("""
+        {"success":true,"data":[{"id":2254,"name":"Dead Cells","types":["steam"],"verified":true},{"id":9,"name":"Dead Cells Demo"}]}
+        """.utf8))
+    #expect(found == [SteamGridDB.Match(id: 2254, name: "Dead Cells"), SteamGridDB.Match(id: 9, name: "Dead Cells Demo")])
+
+    let grids: [SteamGridDB.Grid] = try SteamGridDB.decode(Data("""
+        {"success":true,"data":[{"id":7,"url":"https://cdn2.steamgriddb.com/grid/a.png","thumb":"https://cdn2.steamgriddb.com/thumb/a.jpg","width":600,"height":900}]}
+        """.utf8))
+    #expect(grids.first?.url.pathExtension == "png")
+    // un jeu inconnu : `data` absent, pas une erreur
+    let none: [SteamGridDB.Grid] = try SteamGridDB.decode(Data(#"{"success":false}"#.utf8))
+    #expect(none.isEmpty)
+
+    // la cle part dans l'en-tete, jamais dans l'adresse
+    let api = SteamGridDB(key: "  cle-secrete\n")
+    let request = api.request("grids/game/2254", query: "dimensions=600x900")
+    #expect(request.url?.absoluteString == "https://www.steamgriddb.com/api/v2/grids/game/2254?dimensions=600x900")
+    #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer cle-secrete")
+}
+
+@Test func sansCleSteamGridDBNeDemandeRienAuReseau() async {
+    await #expect(throws: SteamGridDB.Failure.missingKey) { _ = try await SteamGridDB(key: " ").search("Dead Cells") }
+}

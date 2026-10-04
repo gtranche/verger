@@ -159,7 +159,7 @@ struct LoginSheet: View {
         login.start(with: cli)
     }
 
-    private func waiting(_ text: String) -> some View {
+    private func waiting(_ text: LocalizedStringKey) -> some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
             Text(text).fixedSize(horizontal: false, vertical: true)

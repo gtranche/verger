@@ -16,9 +16,17 @@ final class LibraryModel {
         case failed(String)
     }
 
-    enum Filter: String, CaseIterable, Identifiable {
-        case all = "Tous", native = "Natifs", cidre = "Cidre"
+    enum Filter: CaseIterable, Identifiable {
+        case all, native, cidre
         var id: Self { self }
+
+        var title: String {
+            switch self {
+            case .all: L10n.string("Tous")
+            case .native: L10n.string("Natifs")
+            case .cidre: "Cidre"
+            }
+        }
     }
 
     /// Les jeux que possede le compte Steam (`cidre library --json`).
@@ -275,7 +283,7 @@ final class LibraryModel {
     /// Relance `cidre setup` sur le runtime en place (prefixe, pont Steam, SteamCMD).
     func reconfigureRuntime() {
         guard let cli, runtimeTask == nil else { return }
-        runtimeStep = .configuring("Préparation")
+        runtimeStep = .configuring(L10n.string("Préparation"))
         runtimeTask = Task {
             do {
                 try await RuntimeInstaller.configure(cli) { step in

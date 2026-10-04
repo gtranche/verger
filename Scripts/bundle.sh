@@ -18,6 +18,10 @@ mkdir -p "$APP/Contents/MacOS"
 # mv, pas cp : sur macOS, ecraser un binaire mappe tue le processus qui tourne.
 cp "$BIN" "$APP/Contents/MacOS/Verger.nouveau"
 mv "$APP/Contents/MacOS/Verger.nouveau" "$APP/Contents/MacOS/Verger"
+# Les traductions : le francais est la langue du code (table vide), l'anglais
+# est dans Resources/en.lproj.
+mkdir -p "$APP/Contents/Resources"
+cp -R "$R/Resources/"*.lproj "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -32,6 +36,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
    <key>CFBundleVersion</key><string>$VERSION</string>
    <key>LSMinimumSystemVersion</key><string>14.0</string>
    <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
+   <key>CFBundleDevelopmentRegion</key><string>fr</string>
+   <key>CFBundleLocalizations</key><array><string>fr</string><string>en</string></array>
    <key>NSHighResolutionCapable</key><true/>
 </dict>
 </plist>

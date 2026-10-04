@@ -25,7 +25,7 @@ struct LibraryView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Picker("Filtre", selection: $library.filter) {
-                        ForEach(LibraryModel.Filter.allCases) { Text($0.rawValue).tag($0) }
+                        ForEach(LibraryModel.Filter.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                 }
@@ -85,18 +85,18 @@ struct LibraryView: View {
             }
             .task {
                 await library.reload()
-                await library.checkRuntime()
-                await library.checkUpdates()
-                await updater.check()
-                // `Verger --jeu <id>` ouvre directement la fiche d'un jeu
+                // `Verger --jeu <id>` ouvre la fiche d'un jeu, `--connexion` la
+                // connexion a Steam, `--reglages` les reglages
                 let arguments = CommandLine.arguments
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
                     selection = arguments[flag + 1]
                 }
-                // `Verger --connexion` ouvre la fenetre de connexion a Steam
                 if arguments.contains("--connexion") { loggingIn = true }
-                // `Verger --reglages` ouvre les reglages
                 if arguments.contains("--reglages") { openSettings() }
+                // le reste peut attendre : il interroge le reseau
+                await library.checkRuntime()
+                await library.checkUpdates()
+                await updater.check()
             }
     }
 
@@ -167,9 +167,9 @@ struct LibraryView: View {
 
     private func chooseFile(title: String, message: String, types: [UTType], directory: URL? = nil) -> URL? {
         let panel = NSOpenPanel()
-        panel.title = title
-        panel.message = message
-        panel.prompt = "Choisir"
+        panel.title = L10n.string(title)
+        panel.message = L10n.string(message)
+        panel.prompt = L10n.string("Choisir")
         panel.allowedContentTypes = types
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false

@@ -12,11 +12,11 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
         switch self {
         case let .commandFailed(command, status, message):
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
-            return "`cidre \(command)` a échoué (code \(status))" + (detail.isEmpty ? "." : " : \(detail)")
+            return L10n.format("`cidre %@` a échoué (code %lld)", command, Int(status)) + (detail.isEmpty ? "." : " : \(detail)")
         case let .invalidOutput(command, underlying):
-            return "Sortie de `cidre \(command)` illisible — Cidre est-il à jour ? (\(underlying))"
+            return L10n.format("Sortie de `cidre %@` illisible — Cidre est-il à jour ? (%@)", command, underlying)
         case .steamSessionMissing:
-            return "La session Steam n'est pas mémorisée : connecte-toi (bouton +, « Connexion à Steam… »)."
+            return L10n.string("La session Steam n'est pas mémorisée : connecte-toi (bouton +, « Connexion à Steam… »).")
         }
     }
 }
@@ -103,6 +103,10 @@ public struct CidreCLI: Sendable {
     /// le profils.toml de l'utilisateur. S'applique au prochain lancement.
     public func setOption(id: String, _ key: LaunchOptions.Key, to value: Bool) async throws {
         _ = try await checked(["set", id, key.rawValue, value ? "true" : "false"])
+    }
+
+    public func setOption(id: String, _ key: LaunchOptions.Key, to value: String) async throws {
+        _ = try await checked(["set", id, key.rawValue, value])
     }
 
     public func setOption(id: String, _ key: LaunchOptions.Key, to value: Int) async throws {
@@ -259,7 +263,7 @@ public struct CidreCLI: Sendable {
         guard result.status == 0 else {
             throw CidreError.commandFailed(
                 command: arguments.joined(separator: " "), status: result.status,
-                message: log.map { "voir \($0.path)" } ?? "")
+                message: log.map { L10n.format("voir %@", $0.path) } ?? "")
         }
     }
 

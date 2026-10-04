@@ -17,7 +17,7 @@ struct GameCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Cover(appid: game.appid, name: game.name)
+            Cover(id: game.id, appid: game.appid, name: game.name)
                 .overlay(alignment: .bottom) { playOverlay }
                 .overlay {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -39,7 +39,7 @@ struct GameCard: View {
                             .foregroundStyle(.orange)
                             .background(Color.orange.opacity(0.15), in: Capsule())
                     } else {
-                        Text(game.sizeBytes.formatted(.byteCount(style: .file)))
+                        Text(L10n.bytes(game.sizeBytes))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -102,8 +102,8 @@ struct PlatformBadge: View {
 
     private var label: String {
         // dossier Cidre sans installation complete : un telechargement interrompu
-        if !game.installed { return game.source == .cidre ? "Incomplet" : "Absent" }
-        return game.launch == .native ? "Natif" : "Cidre"
+        if !game.installed { return L10n.string(game.source == .cidre ? "Incomplet" : "Absent") }
+        return game.launch == .native ? L10n.string("Natif") : "Cidre"
     }
 
     private var tint: Color {

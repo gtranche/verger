@@ -95,11 +95,11 @@ public enum RuntimeError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case let .noArchiveInRelease(version):
-            "La version \(version) de Cidre ne contient pas d'archive installable par Verger (cidre-runtime.tar.xz)."
-        case let .downloadFailed(detail): "Le téléchargement de Cidre a échoué : \(detail)"
-        case let .extractionFailed(detail): "La décompression de Cidre a échoué : \(detail)"
-        case let .setupFailed(detail): "La configuration de Cidre a échoué : \(detail)"
-        case .invalidArchive: "L'archive ne contient pas Cidre."
+            L10n.format("La version %@ de Cidre ne contient pas d'archive installable par Verger (cidre-runtime.tar.xz).", version)
+        case let .downloadFailed(detail): L10n.format("Le téléchargement de Cidre a échoué : %@", detail)
+        case let .extractionFailed(detail): L10n.format("La décompression de Cidre a échoué : %@", detail)
+        case let .setupFailed(detail): L10n.format("La configuration de Cidre a échoué : %@", detail)
+        case .invalidArchive: L10n.string("L'archive ne contient pas Cidre.")
         }
     }
 }
@@ -160,7 +160,7 @@ public struct RuntimeInstaller: Sendable {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw RuntimeError.downloadFailed("GitHub a répondu \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+            throw RuntimeError.downloadFailed(L10n.format("GitHub a répondu %lld.", (response as? HTTPURLResponse)?.statusCode ?? 0))
         }
         return try parseRelease(data)
     }
@@ -224,7 +224,7 @@ public struct RuntimeInstaller: Sendable {
     public static func configure(
         _ cli: CidreCLI, onStep: @escaping @Sendable (Step) -> Void
     ) async throws {
-        onStep(.configuring("Préparation"))
+        onStep(.configuring(L10n.string("Préparation")))
         let setup = try await run("/bin/sh", [cli.executable.path, "setup"]) { line in
             // `== 2/6 Prefixe Wine ==`
             if line.hasPrefix("== "), line.hasSuffix(" ==") {
@@ -351,7 +351,7 @@ final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendabl
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         if let http = downloadTask.response as? HTTPURLResponse, http.statusCode != 200 {
-            finish(.failure(RuntimeError.downloadFailed("le serveur a répondu \(http.statusCode)")))
+            finish(.failure(RuntimeError.downloadFailed(L10n.format("le serveur a répondu %lld", http.statusCode))))
             return
         }
         // Le fichier disparait au retour de cette methode : on le met de cote.

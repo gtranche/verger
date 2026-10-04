@@ -35,6 +35,24 @@ struct LaunchOptionsEditor: View {
             toggle("Mode Jeu de macOS", .gameMode, isOn: gameMode,
                    help: "Donne la priorité au jeu (processeur, carte graphique, manette) pendant la partie.")
         }
+        if let language = options.language {
+            Picker(selection: Binding(
+                get: { language },
+                set: { value in
+                    let id = targetID
+                    apply { try await $0.setOption(id: id, .language, to: value) }
+                }
+            )) {
+                Text("Automatique").tag("auto")
+                ForEach(Self.gameLanguages, id: \.code) { Text(verbatim: $0.name).tag($0.code) }
+                if language != "auto", !Self.gameLanguages.contains(where: { $0.code == language }) {
+                    Text(verbatim: language).tag(language)
+                }
+            } label: {
+                label("Langue du jeu", .language,
+                      help: "Automatique : la langue de macOS et de Steam. Certains jeux n'obéissent qu'à leurs propres réglages.")
+            }
+        }
         toggle("Compteur fps et charge GPU", .hud, isOn: options.hud,
                help: "Affiche les performances à l'écran, pour voir l'effet d'un réglage.")
         toggle("Shaders compilés en fond", .asyncShaders, isOn: options.asyncShaders,
@@ -63,9 +81,15 @@ struct LaunchOptionsEditor: View {
         }
     }
 
+    /// Les langues proposees pour un jeu, nommees dans leur propre langue.
+    private static let gameLanguages: [(code: String, name: String)] = [
+        ("fr", "Français"), ("en", "English"), ("de", "Deutsch"), ("es", "Español"), ("it", "Italiano"),
+        ("pt", "Português"), ("ru", "Русский"), ("pl", "Polski"), ("ja", "日本語"), ("ko", "한국어"), ("zh", "中文"),
+    ]
+
     private func toggle(
-        _ title: String, _ key: LaunchOptions.Key, isOn: Bool,
-        stored: @escaping @Sendable (Bool) -> Bool = { $0 }, help: String
+        _ title: LocalizedStringKey, _ key: LaunchOptions.Key, isOn: Bool,
+        stored: @escaping @Sendable (Bool) -> Bool = { $0 }, help: LocalizedStringKey
     ) -> some View {
         Toggle(isOn: Binding(
             get: { isOn },
@@ -80,7 +104,7 @@ struct LaunchOptionsEditor: View {
 
     /// Le nom de l'option, son explication, et — si elle est reglee a ce niveau —
     /// une pastille et le bouton pour y renoncer.
-    private func label(_ title: String, _ key: LaunchOptions.Key, help: String) -> some View {
+    private func label(_ title: LocalizedStringKey, _ key: LaunchOptions.Key, help: LocalizedStringKey) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 5) {
                 Text(title)

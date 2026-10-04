@@ -106,13 +106,13 @@ public final class SteamLoginSession: @unchecked Sendable {
     /// On ne rend jamais la sortie brute : elle peut porter ce que l'utilisateur a tape.
     static func reason(in output: String) -> String {
         guard let match = output.firstMatch(of: /(?:failed|error) \(([^)]+)\)/) else {
-            return "Steam a refusé la connexion."
+            return L10n.string("Steam a refusé la connexion.")
         }
         switch match.1 {
-        case "invalid password": return "Identifiant ou mot de passe incorrect."
-        case "rate limit exceeded": return "Trop de tentatives : Steam demande de patienter avant de réessayer."
-        case "two-factor code mismatch", "invalid login auth code": return "Code Steam Guard incorrect."
-        default: return "Steam a refusé la connexion (\(match.1))."
+        case "invalid password": return L10n.string("Identifiant ou mot de passe incorrect.")
+        case "rate limit exceeded": return L10n.string("Trop de tentatives : Steam demande de patienter avant de réessayer.")
+        case "two-factor code mismatch", "invalid login auth code": return L10n.string("Code Steam Guard incorrect.")
+        default: return L10n.format("Steam a refusé la connexion (%@).", String(match.1))
         }
     }
 }

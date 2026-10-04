@@ -1,5 +1,6 @@
 import CidreBridge
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// La fiche d'un jeu (`cidre info --json`) : ou il vit, ses options de
 /// lancement, et ce qu'on peut en faire (jouer, desinstaller).
@@ -10,12 +11,14 @@ struct GameDetail: View {
     @State private var info: GameInfo?
     @State private var error: String?
     @State private var confirmingUninstall = false
+    @State private var searchingCover = false
+    private var covers: CoverStore { CoverStore.shared }
 
     private var sourceLabel: String {
         switch game.source {
-        case .steam: "Client Steam"
-        case .cidre: "Dossier Cidre"
-        case .local: "Hors Steam"
+        case .steam: L10n.string("Client Steam")
+        case .cidre: L10n.string("Dossier Cidre")
+        case .local: L10n.string("Hors Steam")
         }
     }
 
@@ -25,7 +28,7 @@ struct GameDetail: View {
                 LabeledContent("Plateforme") { PlatformBadge(game: game) }
                 LabeledContent("Source", value: sourceLabel)
                 if game.sizeBytes > 0 {
-                    LabeledContent("Taille", value: game.sizeBytes.formatted(.byteCount(style: .file)))
+                    LabeledContent("Taille", value: L10n.bytes(game.sizeBytes))
                 }
                 LabeledContent("Dernier lancement") {
                     if let date = game.lastPlayed {
@@ -38,7 +41,7 @@ struct GameDetail: View {
                     LabeledContent("AppID", value: String(appid))
                 }
                 if let info {
-                    LabeledContent("Sauvegardes iCloud", value: info.savesSynced ? "Synchronisées" : "Non configurées")
+                    LabeledContent("Sauvegardes iCloud", value: L10n.string(info.savesSynced ? "Synchronisées" : "Non configurées"))
                 }
             } header: {
                 Text(game.name).font(.title3.weight(.semibold))
@@ -106,6 +109,16 @@ struct GameDetail: View {
                 }
                 .frame(maxWidth: .infinity)
 
+                Menu("Jaquette") {
+                    Button("Choisir une image…") { chooseCoverFile() }
+                    Button("Chercher sur SteamGridDB…") { searchingCover = true }
+                    if covers.customCover(for: game.id) != nil {
+                        Divider()
+                        Button("Rétablir la jaquette d'origine") { covers.removeCover(for: game.id) }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
                 switch game.source {
                 case .local:
                     Button("Retirer de la bibliothèque") {
@@ -125,6 +138,7 @@ struct GameDetail: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: $searchingCover) { CoverPicker(game: game) }
         .confirmationDialog(
             "Désinstaller \(game.name) ?", isPresented: $confirmingUninstall
         ) {
@@ -137,9 +151,9 @@ struct GameDetail: View {
             }
         } message: {
             if game.source == .steam {
-                Text("Ce jeu est dans la bibliothèque du client Steam : Steam va s'ouvrir et te demander de confirmer. Ses fichiers (\(game.sizeBytes.formatted(.byteCount(style: .file)))) seront supprimés ; tu pourras le réinstaller depuis tes jeux Steam.")
+                Text("Ce jeu est dans la bibliothèque du client Steam : Steam va s'ouvrir et te demander de confirmer. Ses fichiers (\(L10n.bytes(game.sizeBytes))) seront supprimés ; tu pourras le réinstaller depuis tes jeux Steam.")
             } else {
-                Text("Ses fichiers (\(game.sizeBytes.formatted(.byteCount(style: .file)))) seront supprimés du disque. Tu pourras le réinstaller depuis tes jeux Steam.")
+                Text("Ses fichiers (\(L10n.bytes(game.sizeBytes))) seront supprimés du disque. Tu pourras le réinstaller depuis tes jeux Steam.")
             }
         }
         .task(id: game.id) {
@@ -150,6 +164,21 @@ struct GameDetail: View {
             } catch {
                 self.error = error.localizedDescription
             }
+        }
+    }
+
+    private func chooseCoverFile() {
+        let panel = NSOpenPanel()
+        panel.title = L10n.string("Choisir une jaquette")
+        panel.message = L10n.string("Choisis une image au format portrait (600 × 900 idéalement).")
+        panel.prompt = L10n.string("Choisir")
+        panel.allowedContentTypes = [.png, .jpeg, .webP]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try covers.setCover(for: game.id, from: url)
+        } catch {
+            library.lastError = L10n.string("Cette image est illisible.")
         }
     }
 }

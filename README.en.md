@@ -1,0 +1,74 @@
+# Verger
+
+**The game library for Apple Silicon Macs that runs your Windows games.** Verger installs, tunes and launches your games — the ones on your Steam account and the others — without ever opening a Terminal.
+
+[Version française](README.md) · [Download the latest version](https://github.com/gtranche/verger/releases/latest)
+
+![Verger's library](docs/captures/library-en.png)
+
+Verger is the interface. The engine is called [Cidre](https://github.com/gtranche/cidre): FEX, Wine, DXVK and KosmicKrisp put together to run Windows games as native arm64, without Rosetta. Verger installs Cidre and keeps it up to date on its own; there is nothing else to install.
+
+## Install
+
+1. Download `Verger.zip` from the [latest release](https://github.com/gtranche/verger/releases/latest) and unzip it.
+2. Open Verger with **right-click → Open** the first time: the app is not notarized by Apple, so a double-click would be refused.
+3. Verger offers to install Cidre (about 400 MB): accept, it handles the rest.
+
+You need an Apple Silicon Mac running **macOS 26 (Tahoe)** or later, and the Steam client for Steam games.
+
+## What Verger does
+
+### One library, all your games
+
+Your native games and your Windows games in one place, with their cover art. Click a card to open its panel, double-click to launch the game.
+
+- **Install a Steam game** from your account: Verger lists the ones that are not installed. The Windows version is downloaded through Cidre, with progress; when a macOS version exists, it is offered first.
+- **Add a non-Steam game**: choose its `.exe` and it joins the library. An installer (GOG, itch…) can be run from Verger too.
+- **Game updates**: a game that is behind the latest published build is tagged "Update".
+- **Cover art**: Steam's, or yours — an image of your own, or a search in [SteamGridDB](https://www.steamgriddb.com/) (free key), including for non-Steam games.
+
+### Launch options you can read
+
+Each option says what it gains and what it risks: CPU performance, vsync, true full screen, macOS Game Mode, performance counter, background shader compilation.
+
+Three levels, weakest to strongest: what Cidre ships for a game, your **general settings**, and what you **force for one game** in its panel. A dot marks what you set yourself; one click gives it up.
+
+### Everything is set from the app
+
+- **Cidre**: its version, the status of each part, its update.
+- **Steam**: sign in, sign out, switch account. Verger passes your password to SteamCMD, Valve's tool, and does not keep it.
+- **Options**: the general launch settings.
+- **Verger**: its language (French or English) and its own update, from GitHub.
+
+## What Verger does not do (yet)
+
+- **No Steam overlay** in Windows games (Shift+Tab, in-game notifications).
+- **No online play protected by Easy Anti-Cheat.** Some games offer a mode without anti-cheat (Vermintide 2's "Modded Realm"): that is the "Permissive anti-cheat" option.
+- **Not every game runs.** Cidre is young; compatibility is checked game by game.
+- **The app is not notarized**: hence right-click → Open on first launch.
+- **Steam sign-in by password** (passed to SteamCMD), not by QR code yet.
+- **Saves** of Windows games are synced to iCloud by Cidre for a few games, but Verger has no screen to manage them yet.
+
+## Build from source
+
+You need the Swift tools (Command Line Tools or Xcode), nothing else.
+
+```bash
+Scripts/bundle.sh --open
+```
+
+builds `build/Verger.app` and opens it. Tests:
+
+```bash
+Scripts/test.sh
+```
+
+Interface texts are written in French in the code; their English translation lives in `Resources/en.lproj`. `Scripts/chaines.py` reports what is missing.
+
+To publish a version, push a `vX.Y.Z` tag: GitHub Actions tests, builds `Verger.app` and attaches it to the release. That archive is what Verger downloads to update itself.
+
+## How it is built
+
+Verger contains no engine binary and reimplements none of it: it drives Cidre through its command line (`cidre list --json`, `cidre play`, `cidre set`…). Two repositories, one contract. The interface can be fixed ten times a day without anyone downloading a byte of Wine again.
+
+The details — the full contract, the design choices, the progress — are in [docs/CONCEPTION.md](docs/CONCEPTION.md) (in French).

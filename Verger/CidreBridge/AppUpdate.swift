@@ -25,10 +25,10 @@ public enum AppUpdateError: Error, LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case let .checkFailed(detail): "Impossible de vérifier les mises à jour de Verger : \(detail)"
-        case let .noArchiveInRelease(version): "La version \(version) de Verger ne contient pas d'archive Verger.zip."
-        case let .invalidArchive(detail): "L'archive de mise à jour n'est pas valide : \(detail)"
-        case let .notReplaceable(detail): "Verger ne peut pas se remplacer lui-même : \(detail)"
+        case let .checkFailed(detail): L10n.format("Impossible de vérifier les mises à jour de Verger : %@", detail)
+        case let .noArchiveInRelease(version): L10n.format("La version %@ de Verger ne contient pas d'archive Verger.zip.", version)
+        case let .invalidArchive(detail): L10n.format("L'archive de mise à jour n'est pas valide : %@", detail)
+        case let .notReplaceable(detail): L10n.format("Verger ne peut pas se remplacer lui-même : %@", detail)
         }
     }
 }
@@ -46,8 +46,8 @@ public enum AppUpdater {
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         // 404 : le depot n'a encore aucune release
-        guard status != 404 else { throw AppUpdateError.checkFailed("aucune version n'est encore publiée.") }
-        guard status == 200 else { throw AppUpdateError.checkFailed("GitHub a répondu \(status).") }
+        guard status != 404 else { throw AppUpdateError.checkFailed(L10n.string("aucune version n'est encore publiée.")) }
+        guard status == 200 else { throw AppUpdateError.checkFailed(L10n.format("GitHub a répondu %lld.", status)) }
         return try parseRelease(data)
     }
 
@@ -77,10 +77,10 @@ public enum AppUpdater {
     ) async throws {
         let fm = FileManager.default
         guard app.pathExtension == "app" else {
-            throw AppUpdateError.notReplaceable("il n'est pas lancé depuis une application (.app).")
+            throw AppUpdateError.notReplaceable(L10n.string("il n'est pas lancé depuis une application (.app)."))
         }
         guard fm.isWritableFile(atPath: app.deletingLastPathComponent().path) else {
-            throw AppUpdateError.notReplaceable("le dossier \(app.deletingLastPathComponent().path) n'est pas modifiable.")
+            throw AppUpdateError.notReplaceable(L10n.format("le dossier %@ n'est pas modifiable.", app.deletingLastPathComponent().path))
         }
 
         let archive: URL
@@ -102,11 +102,11 @@ public enum AppUpdater {
         guard unzip.status == 0 else { throw AppUpdateError.invalidArchive(unzip.lastLines) }
         let fresh = work.appendingPathComponent(app.lastPathComponent)
         guard fm.isExecutableFile(atPath: fresh.appendingPathComponent("Contents/MacOS/Verger").path) else {
-            throw AppUpdateError.invalidArchive("pas de \(app.lastPathComponent) dedans.")
+            throw AppUpdateError.invalidArchive(L10n.format("pas de %@ dedans.", app.lastPathComponent))
         }
         // Une application dont la signature ne tient pas ne se lancerait pas.
         let signature = try await RuntimeInstaller.run("/usr/bin/codesign", ["--verify", "--deep", fresh.path])
-        guard signature.status == 0 else { throw AppUpdateError.invalidArchive("signature invalide.") }
+        guard signature.status == 0 else { throw AppUpdateError.invalidArchive(L10n.string("signature invalide.")) }
 
         // On ecarte l'ancienne, on pose la nouvelle ; au moindre echec on remet l'ancienne.
         let previous = app.deletingLastPathComponent()

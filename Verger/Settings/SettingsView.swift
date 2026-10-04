@@ -27,13 +27,13 @@ private struct CidreSettings: View {
         Form {
             if let status = library.runtimeStatus {
                 Section("Version") {
-                    LabeledContent("Installée", value: status.isDevelopmentCheckout ? "Dépôt de développement" : status.version)
+                    LabeledContent("Installée", value: status.isDevelopmentCheckout ? L10n.string("Dépôt de développement") : status.version)
                     if let update = library.availableUpdate {
                         LabeledContent("Disponible") {
                             Text(update.version).foregroundStyle(.orange)
                         }
                     } else if !status.isDevelopmentCheckout {
-                        LabeledContent("Disponible", value: "À jour")
+                        LabeledContent("Disponible", value: L10n.string("À jour"))
                     }
                     LabeledContent("Emplacement") {
                         Text(status.root).font(.callout).textSelection(.enabled).lineLimit(2).truncationMode(.middle)
@@ -45,8 +45,8 @@ private struct CidreSettings: View {
                     check("SteamCMD", status.steamcmdPresent)
                     check("Bibliothèques (SPIRV-Tools, FreeType)",
                           status.prerequisites.missing.isEmpty,
-                          problem: "Manque : " + status.prerequisites.missing.joined(separator: ", "))
-                    LabeledContent("Jeu en cours", value: status.gameRunning ? "Oui" : "Non")
+                          problem: L10n.format("Manque : %@", status.prerequisites.missing.joined(separator: ", ")))
+                    LabeledContent("Jeu en cours", value: L10n.string(status.gameRunning ? "Oui" : "Non"))
                 }
                 Section {
                     if let step = library.runtimeStep {
@@ -88,9 +88,9 @@ private struct CidreSettings: View {
         .task { await library.checkRuntime() }
     }
 
-    private func check(_ title: String, _ ok: Bool, problem: String = "Absent") -> some View {
+    private func check(_ title: LocalizedStringKey, _ ok: Bool, problem: String = L10n.string("Absent")) -> some View {
         LabeledContent(title) {
-            Label(ok ? "Prêt" : problem, systemImage: ok ? "checkmark.circle.fill" : "xmark.octagon.fill")
+            Label(ok ? L10n.string("Prêt") : problem, systemImage: ok ? "checkmark.circle.fill" : "xmark.octagon.fill")
                 .foregroundStyle(ok ? .green : .red)
         }
     }
@@ -107,9 +107,9 @@ private struct SteamSettings: View {
         Form {
             Section("Compte") {
                 if let session = library.steamSession {
-                    LabeledContent("Identifiant", value: session.account.isEmpty ? "Aucun" : session.account)
+                    LabeledContent("Identifiant", value: session.account.isEmpty ? L10n.string("Aucun") : session.account)
                     LabeledContent("Session") {
-                        Label(session.connected ? "Connecté" : "Déconnecté",
+                        Label(L10n.string(session.connected ? "Connecté" : "Déconnecté"),
                               systemImage: session.connected ? "checkmark.circle.fill" : "minus.circle")
                             .foregroundStyle(session.connected ? .green : .secondary)
                     }
@@ -134,13 +134,11 @@ private struct SteamSettings: View {
                 }
             }
             Section("Sans connexion") {
-                Text("""
-                    Tes jeux installés restent jouables : jouer ne demande pas cette session. Elle sert à lire la \
-                    liste de tes jeux, à en installer et à les mettre à jour.
-
-                    Les jeux Steam ont en revanche besoin du client Steam ouvert pendant la partie (succès, amis, \
-                    vérification de la licence) ; hors ligne, c'est son mode hors ligne qui s'applique.
-                    """)
+                Text("Tes jeux installés restent jouables : jouer ne demande pas cette session. Elle sert à lire la liste de tes jeux, à en installer et à les mettre à jour.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Les jeux Steam ont en revanche besoin du client Steam ouvert pendant la partie (succès, amis, vérification de la licence) ; hors ligne, c'est son mode hors ligne qui s'applique.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -203,15 +201,27 @@ private struct OptionsSettings: View {
 
 private struct VergerSettings: View {
     @Environment(AppUpdateModel.self) private var updater
+    @AppStorage("langue") private var language = ""
+    @AppStorage("cleSteamGridDB") private var gridKey = ""
 
     var body: some View {
         Form {
+            Section {
+                Picker("Langue de Verger", selection: $language) {
+                    Text("Celle de macOS").tag("")
+                    Text(verbatim: "Français").tag("fr")
+                    Text(verbatim: "English").tag("en")
+                }
+            } footer: {
+                Text("Les menus de macOS en haut de l'écran changent à la prochaine ouverture de Verger.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             Section("Version") {
-                LabeledContent("Installée", value: updater.currentVersion ?? "Lancé hors application")
+                LabeledContent("Installée", value: updater.currentVersion ?? L10n.string("Lancé hors application"))
                 if let update = updater.available {
                     LabeledContent("Disponible") { Text(update.version).foregroundStyle(.orange) }
                 } else if updater.latest != nil {
-                    LabeledContent("Disponible", value: "À jour")
+                    LabeledContent("Disponible", value: L10n.string("À jour"))
                 }
                 if let date = updater.lastCheck {
                     LabeledContent("Dernière vérification") { Text(date, style: .time) }
@@ -238,6 +248,15 @@ private struct VergerSettings: View {
                 }
             } footer: {
                 Text("Verger se met à jour depuis ses versions publiées sur GitHub, séparément de Cidre : une mise à jour de l'interface ne retélécharge pas le moteur.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
+                SecureField("Clé d'API SteamGridDB", text: $gridKey)
+                Link("Ouvrir la page de la clé sur steamgriddb.com", destination: SteamGridDB.keyPage)
+            } header: {
+                Text("Jaquettes")
+            } footer: {
+                Text("Pour chercher des jaquettes (jeux non-Steam, ou une image que tu préfères) depuis la fiche d'un jeu. La clé est gratuite et reste dans les préférences de Verger, sur ce Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

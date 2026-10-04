@@ -12,7 +12,7 @@ struct RuntimeProgress: View {
                 switch step {
                 case let .downloading(done, total) where total > 0:
                     ProgressView(value: min(Double(done) / Double(total), 1))
-                    Text("Téléchargement de Cidre — \(done.formatted(.byteCount(style: .file))) sur \(total.formatted(.byteCount(style: .file)))")
+                    Text("Téléchargement de Cidre — \(L10n.bytes(done)) sur \(L10n.bytes(total))")
                 case .downloading:
                     ProgressView().progressViewStyle(.linear)
                     Text("Téléchargement de Cidre…")
@@ -63,6 +63,9 @@ struct RuntimeBanners: View {
     @Environment(LibraryModel.self) private var library
     @Environment(AppUpdateModel.self) private var updater
 
+    /// La version de Verger en cours, pour les bandeaux.
+    private var currentVersion: String { updater.currentVersion ?? "?" }
+
     var body: some View {
         VStack(spacing: 0) {
             if let update = updater.available {
@@ -71,7 +74,7 @@ struct RuntimeBanners: View {
                         ProgressView(value: total > 0 ? min(Double(done) / Double(total), 1) : 0)
                         Text("Téléchargement de Verger \(update.version)…")
                     } else {
-                        Label("Verger \(update.version) est disponible (tu as la \(updater.currentVersion ?? "?")).", systemImage: "leaf")
+                        Label("Verger \(update.version) est disponible (tu as la \(currentVersion)).", systemImage: "leaf")
                         Spacer()
                         Button("Mettre à jour et relancer") { Task { await updater.install() } }
                             .disabled(!library.running.isEmpty)
@@ -94,8 +97,9 @@ struct RuntimeBanners: View {
             }
             if let missing = library.runtimeStatus?.prerequisites.missing, !missing.isEmpty {
                 let command = "brew install " + missing.joined(separator: " ")
+                let missingList = missing.joined(separator: ", ")
                 banner {
-                    Label("Il manque \(missing.joined(separator: " et ")) : sans eux, les jeux Windows ne s'affichent pas.", systemImage: "exclamationmark.triangle")
+                    Label("Il manque \(missingList) : sans eux, les jeux Windows ne s'affichent pas.", systemImage: "exclamationmark.triangle")
                     Spacer()
                     Text(command).font(.callout.monospaced()).textSelection(.enabled)
                     Button("Copier") {
