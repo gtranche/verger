@@ -1,0 +1,39 @@
+#!/bin/sh
+# Construit Verger.app (arm64, release) sans Xcode : `swift build` + un bundle
+# monte a la main. Sortie : build/Verger.app
+#   Scripts/bundle.sh [--open]
+set -eu
+R=$(cd "$(dirname "$0")/.." && pwd)
+VERSION=${VERGER_VERSION:-0.1.0}
+APP="$R/build/Verger.app"
+
+swift build --package-path "$R" -c release --arch arm64
+BIN=$(swift build --package-path "$R" -c release --arch arm64 --show-bin-path)/Verger
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS"
+# mv, pas cp : sur macOS, ecraser un binaire mappe tue le processus qui tourne.
+cp "$BIN" "$APP/Contents/MacOS/Verger.nouveau"
+mv "$APP/Contents/MacOS/Verger.nouveau" "$APP/Contents/MacOS/Verger"
+cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+   <key>CFBundleName</key><string>Verger</string>
+   <key>CFBundleDisplayName</key><string>Verger</string>
+   <key>CFBundleIdentifier</key><string>io.github.gtranche.verger</string>
+   <key>CFBundleExecutable</key><string>Verger</string>
+   <key>CFBundlePackageType</key><string>APPL</string>
+   <key>CFBundleShortVersionString</key><string>$VERSION</string>
+   <key>CFBundleVersion</key><string>$VERSION</string>
+   <key>LSMinimumSystemVersion</key><string>14.0</string>
+   <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
+   <key>NSHighResolutionCapable</key><true/>
+</dict>
+</plist>
+PLIST
+codesign --force --sign - "$APP" >/dev/null
+echo "OK : $APP ($(du -sh "$APP" | cut -f1))"
+[ "${1:-}" = --open ] && open "$APP"
+exit 0
