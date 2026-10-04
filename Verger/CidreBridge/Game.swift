@@ -123,6 +123,8 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
     public var fullscreen: Bool?
     /// Game Mode de macOS force pendant le jeu. `nil` : ce Cidre ne connait pas l'option.
     public var gameMode: Bool?
+    /// Overlay Steam en jeu (Maj+Tab). `nil` : ce Cidre ne connait pas l'option.
+    public var overlay: Bool?
     /// La langue du jeu : `auto` (suivre macOS et Steam) ou un code a deux
     /// lettres. `nil` : ce Cidre ne connait pas l'option.
     public var language: String?
@@ -137,6 +139,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         case eacUntrusted = "eac_untrusted"
         case fullscreen = "plein_ecran"
         case gameMode = "gamemode"
+        case overlay
         case language = "langue"
     }
 
@@ -154,6 +157,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         luajit = try c.decodeIfPresent(Bool.self, forKey: .luajit) ?? d.luajit
         fullscreen = try c.decodeIfPresent(Bool.self, forKey: .fullscreen)
         gameMode = try c.decodeIfPresent(Bool.self, forKey: .gameMode)
+        overlay = try c.decodeIfPresent(Bool.self, forKey: .overlay)
         language = try c.decodeIfPresent(String.self, forKey: .language)
     }
 }

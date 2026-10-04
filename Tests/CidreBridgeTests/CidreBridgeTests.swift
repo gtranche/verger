@@ -98,7 +98,7 @@ private let infoJSON = """
     #expect(info.options.luajit)
     #expect(info.options.tso)
     // un Cidre qui ne connait pas ces options ne les fait pas apparaitre
-    #expect(info.options.fullscreen == nil && info.options.gameMode == nil)
+    #expect(info.options.fullscreen == nil && info.options.gameMode == nil && info.options.overlay == nil)
 }
 
 @Test func optionsAbsentesPrennentLesDefauts() throws {
@@ -140,7 +140,7 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
-          options) echo '{"options":{"tso":true,"vsync":false,"hud":true,"async":false,"fils_compilation":0,"eac_untrusted":false,"luajit":false,"plein_ecran":true,"gamemode":false},"options_perso":{"vsync":false,"hud":true}}' ;;
+          options) echo '{"options":{"tso":true,"vsync":false,"hud":true,"async":false,"fils_compilation":0,"eac_untrusted":false,"luajit":false,"plein_ecran":true,"gamemode":false,"overlay":true},"options_perso":{"vsync":false,"hud":true}}' ;;
           session) echo '{"compte":"joueur","connecte":false}' ;;
           logout) echo "logout" >> "$(dirname "$0")/reglages.txt" ;;
           updates) echo '[{"appid":588650,"build_installe":1,"build_disponible":23762174,"a_jour":false},{"appid":552500,"build_installe":7,"build_disponible":7,"a_jour":true}]' ;;
@@ -195,6 +195,7 @@ private let infoJSON = """
     let defaults = try await cli.defaultOptions()
     #expect(defaults.overridden == [.vsync, .hud])
     #expect(defaults.options.fullscreen == true && defaults.options.gameMode == false)
+    #expect(defaults.options.overlay == true)
     try await cli.setOption(id: CidreCLI.defaultsID, .fullscreen, to: false)
     try await cli.resetOptions(id: CidreCLI.defaultsID, .vsync)
 
