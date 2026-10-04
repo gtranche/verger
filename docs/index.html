@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verger — la bibliothèque de jeux pour Mac Apple Silicon</title>
+<meta name="description" content="Verger installe, règle et lance tes jeux Windows et tes jeux natifs sur Mac Apple Silicon, sans jamais ouvrir un Terminal.">
+<link rel="canonical" href="https://gtranche.github.io/verger/">
+<link rel="alternate" hreflang="fr" href="https://gtranche.github.io/verger/">
+<link rel="alternate" hreflang="en" href="https://gtranche.github.io/verger/en/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Verger — la bibliothèque de jeux pour Mac Apple Silicon">
+<meta property="og:description" content="Installe, règle et lance tes jeux Windows et tes jeux natifs, sans Terminal.">
+<meta property="og:url" content="https://gtranche.github.io/verger/">
+<meta property="og:image" content="https://gtranche.github.io/verger/captures/bibliotheque.png">
+<meta name="theme-color" content="#f5f2e9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141716" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<script>
+// Un visiteur dont le navigateur n'est pas en français va vers la page anglaise,
+// sauf s'il a déjà choisi sa langue avec le sélecteur.
+try {
+  if (!localStorage.getItem("verger-langue") && !/^fr\b/i.test(navigator.language || "fr")) {
+    location.replace("en/");
+  }
+} catch (e) {}
+</script>
+</head>
+<body>
+<a class="passer" href="#contenu">Aller au contenu</a>
+
+<header class="cadre bandeau">
+  <a class="marque" href="./" aria-label="Verger, accueil">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20C4 10 10 4 21 3c0 11-6 17-17 17Z" fill="currentColor"/><path d="M4 20 13 11" stroke="var(--fond)" stroke-width="1.6" stroke-linecap="round"/></svg>
+    Verger
+  </a>
+  <nav class="menu" aria-label="Sections">
+    <a class="ancre" href="#fonctions">Fonctions</a>
+    <a class="ancre" href="#installer">Installer</a>
+    <a class="ancre" href="#cidre">Cidre</a>
+    <a class="ancre" href="#limites">Limites</a>
+    <span class="langues">
+      <a href="./" lang="fr" aria-current="page" data-langue="fr">FR</a>
+      <a href="en/" lang="en" hreflang="en" data-langue="en" aria-label="English version">EN</a>
+    </span>
+  </nav>
+</header>
+
+<main id="contenu">
+
+  <div class="cadre ouverture">
+    <h1>La bibliothèque de jeux pour Mac qui fait tourner tes jeux Windows.</h1>
+    <p class="chapo">Verger installe, règle et lance tes jeux, ceux de ton compte Steam comme les autres, sans jamais ouvrir un Terminal.</p>
+    <div class="actions">
+      <a class="bouton" href="https://github.com/gtranche/verger/releases/latest/download/Verger.zip">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 17h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Télécharger Verger.zip
+      </a>
+      <a href="https://github.com/gtranche/verger/releases/latest">Notes de la dernière version</a>
+    </div>
+    <p class="requis">Pour Mac Apple Silicon, macOS 26 (Tahoe) ou plus récent.</p>
+
+    <figure class="capture">
+      <a href="captures/bibliotheque.png">
+        <img src="captures/bibliotheque.webp" width="1600" height="1139" alt="La fenêtre de Verger&#8239;: quatre jeux avec leur jaquette, chacun marqué «&#8239;Natif&#8239;» ou «&#8239;Cidre&#8239;», et des filtres Tous, Natifs, Cidre.">
+      </a>
+      <figcaption>La bibliothèque&#8239;: jeux natifs et jeux Windows côte à côte.</figcaption>
+    </figure>
+  </div>
+
+  <section id="fonctions" class="cadre">
+    <h2>Une bibliothèque, tous tes jeux</h2>
+    <p class="intro">Un clic sur une carte ouvre sa fiche, un double-clic lance le jeu.</p>
+    <ul class="capacites">
+      <li>
+        <h3>Installer un jeu Steam</h3>
+        <p>Verger liste les jeux de ton compte qui ne sont pas installés. La version Windows se télécharge par Cidre, avec son avancement&#8239;; quand une version macOS existe, c'est elle qui est proposée d'abord.</p>
+      </li>
+      <li>
+        <h3>Ajouter un jeu non-Steam</h3>
+        <p>Choisis son <code>.exe</code>, il entre dans la bibliothèque. Un installeur (GOG, itch…) se lance aussi depuis Verger.</p>
+      </li>
+      <li>
+        <h3>Suivre les mises à jour</h3>
+        <p>Un jeu en retard sur la dernière version publiée porte l'étiquette «&#8239;Mise à jour&#8239;».</p>
+      </li>
+      <li>
+        <h3>Choisir les jaquettes</h3>
+        <p>Celles de Steam, une image à toi, ou une recherche dans <a href="https://www.steamgriddb.com/">SteamGridDB</a> (clé gratuite), y compris pour les jeux non-Steam.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section class="cadre duo">
+    <div>
+      <h2>Des options de lancement lisibles</h2>
+      <p class="intro">Chaque option dit ce qu'elle fait gagner et ce qu'elle risque&#8239;: performance CPU, vsync, vrai plein écran, Mode Jeu de macOS, compteur de performances, compilation des shaders en fond.</p>
+      <ol class="niveaux" aria-label="Trois niveaux de réglage, du plus faible au plus fort">
+        <li><span>Ce que Cidre livre</span></li>
+        <li><span>Tes réglages généraux</span></li>
+        <li><span>Ce que tu forces pour un jeu</span></li>
+      </ol>
+      <p class="legende">Du plus faible au plus fort. Une pastille marque ce que tu as réglé toi-même&#8239;; un clic y renonce.</p>
+    </div>
+    <figure class="capture">
+      <a href="captures/fiche-options.png">
+        <img src="captures/fiche-options.webp" width="1600" height="1139" loading="lazy" alt="La fiche d'un jeu ouverte à droite de la bibliothèque&#8239;: plateforme, source, taille, puis les options de lancement, chacune avec une phrase d'explication et un interrupteur.">
+      </a>
+      <figcaption>La fiche d'un jeu et ses options de lancement.</figcaption>
+    </figure>
+  </section>
+
+  <section class="cadre duo inverse">
+    <div>
+      <h2>Tout se règle dans l'application</h2>
+      <dl class="reglages">
+        <dt>Cidre</dt>
+        <dd>Sa version, l'état de chaque pièce, sa mise à jour.</dd>
+        <dt>Steam</dt>
+        <dd>Se connecter, se déconnecter, changer de compte, dans une fenêtre. Verger relaie ton mot de passe à SteamCMD, l'outil de Valve, et ne le garde pas.</dd>
+        <dt>Options</dt>
+        <dd>Les réglages généraux de lancement.</dd>
+        <dt>Verger</dt>
+        <dd>Sa langue, français ou anglais, et sa propre mise à jour depuis GitHub.</dd>
+      </dl>
+    </div>
+    <figure class="capture">
+      <a href="captures/reglages.png">
+        <img src="captures/reglages.webp" width="1600" height="919" loading="lazy" alt="Deux fenêtres de réglages&#8239;: à gauche l'état de Cidre, chaque pièce marquée «&#8239;Prêt&#8239;»&#8239;; à droite les options générales de lancement.">
+      </a>
+      <figcaption>Les réglages&#8239;: état de Cidre et options générales.</figcaption>
+    </figure>
+  </section>
+
+  <section id="installer" class="bande">
+    <div class="cadre">
+      <h2>Installer</h2>
+      <ol class="etapes">
+        <li>
+          <h3>Télécharge</h3>
+          <p>Récupère <code>Verger.zip</code> depuis la <a href="https://github.com/gtranche/verger/releases/latest">dernière version</a> sur GitHub et décompresse-le.</p>
+        </li>
+        <li>
+          <h3>Clic droit → Ouvrir</h3>
+          <p>La première fois seulement&#8239;: l'application n'est pas notarisée par Apple, un double-clic serait refusé.</p>
+        </li>
+        <li>
+          <h3>Laisse Verger installer Cidre</h3>
+          <p>Verger propose d'installer le moteur (environ 400 Mo). Accepte, il s'occupe du reste.</p>
+        </li>
+      </ol>
+
+      <div class="configuration">
+        <h3>Configuration requise</h3>
+        <ul>
+          <li>Un Mac Apple Silicon</li>
+          <li>macOS 26 (Tahoe) ou plus récent</li>
+          <li>Le client Steam, pour les jeux Steam</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="cidre" class="cadre duo">
+    <div>
+      <h2>Sous le capot&#8239;: Cidre</h2>
+      <p class="intro">Verger est l'interface. Le moteur s'appelle Cidre&#8239;: quatre projets assemblés pour faire tourner des jeux Windows en arm64 natif, sans Rosetta.</p>
+      <p class="intro">Verger n'en contient aucun binaire. Il installe Cidre et le tient à jour tout seul&#8239;; tu n'as rien d'autre à installer.</p>
+      <a class="lien-fort" href="https://github.com/gtranche/cidre">Le dépôt de Cidre sur GitHub →</a>
+    </div>
+    <ul class="pile" aria-label="Ce que Cidre assemble">
+      <li><b>FEX</b><span>exécute le code x86 des jeux sur arm64</span></li>
+      <li><b>Wine</b><span>fait tourner les programmes Windows</span></li>
+      <li><b>DXVK</b><span>traduit Direct3D en Vulkan</span></li>
+      <li><b>KosmicKrisp</b><span>le pilote Vulkan, au-dessus de Metal</span></li>
+    </ul>
+  </section>
+
+  <section id="limites" class="cadre">
+    <h2>Ce que Verger ne fait pas (encore)</h2>
+    <ul class="limites">
+      <li><b>Tous les jeux ne tournent pas.</b> Cidre est jeune&#8239;; la compatibilité se vérifie jeu par jeu.</li>
+      <li><b>Pas de jeu en ligne protégé par Easy Anti-Cheat.</b> Certains jeux proposent un mode sans anti-triche (le «&#8239;Modded Realm&#8239;» de Vermintide 2)&#8239;: c'est l'option «&#8239;Anti-triche permissif&#8239;».</li>
+      <li><b>Pas d'overlay Steam</b> dans les jeux Windows (Maj+Tab, notifications en jeu).</li>
+      <li><b>Connexion Steam par mot de passe</b>, relayé à SteamCMD. Pas encore par QR code.</li>
+      <li><b>Application non notarisée</b> par Apple&#8239;: d'où le clic droit → Ouvrir au premier lancement.</li>
+      <li><b>Pas d'écran pour gérer les sauvegardes.</b> Cidre synchronise celles de quelques jeux Windows vers iCloud, mais Verger ne permet pas encore de les gérer.</li>
+    </ul>
+    <p class="suite"><a href="https://github.com/gtranche/verger/issues">Signaler un problème sur GitHub</a></p>
+  </section>
+
+</main>
+
+<footer class="pied">
+  <div class="cadre">
+    <nav aria-label="Liens">
+      <a href="https://github.com/gtranche/verger">Code source de Verger</a>
+      <a href="https://github.com/gtranche/cidre">Cidre</a>
+      <a href="https://github.com/gtranche/verger/releases">Toutes les versions</a>
+      <a href="https://github.com/gtranche/verger/blob/main/docs/CONCEPTION.md">Conception</a>
+    </nav>
+    <p>Les jaquettes visibles dans les captures appartiennent à leurs éditeurs respectifs. Steam est une marque de Valve Corporation&#8239;; Verger n'est affilié ni à Valve ni à Apple.</p>
+  </div>
+</footer>
+
+<script>
+// Retenir la langue choisie, pour que la redirection automatique ne la contredise pas.
+document.querySelectorAll("[data-langue]").forEach(function (lien) {
+  lien.addEventListener("click", function () {
+    try { localStorage.setItem("verger-langue", lien.dataset.langue); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>
