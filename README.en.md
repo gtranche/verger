@@ -31,7 +31,7 @@ Your native games and your Windows games in one place, with their cover art. Cli
 
 ### Launch options you can read
 
-Each option says what it gains and what it risks: CPU performance, vsync, true full screen, macOS Game Mode, performance counter, background shader compilation.
+Each option says what it gains and what it risks: CPU performance, vsync, true full screen, macOS Game Mode, Steam overlay, performance counter, background shader compilation.
 
 Three levels, weakest to strongest: what Cidre ships for a game, your **general settings**, and what you **force for one game** in its panel. A dot marks what you set yourself; one click gives it up.
 

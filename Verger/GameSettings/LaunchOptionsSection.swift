@@ -35,6 +35,10 @@ struct LaunchOptionsEditor: View {
             toggle("Mode Jeu de macOS", .gameMode, isOn: gameMode,
                    help: "Donne la priorité au jeu (processeur, carte graphique, manette) pendant la partie.")
         }
+        if let overlay = options.overlay {
+            toggle("Overlay Steam", .overlay, isOn: overlay,
+                   help: "Maj+Tab en jeu : amis, succès, guides et notifications de Steam. À couper si un jeu s'affiche mal.")
+        }
         if let language = options.language {
             Picker(selection: Binding(
                 get: { language },

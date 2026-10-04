@@ -33,7 +33,7 @@ Tes jeux natifs et tes jeux Windows au même endroit, avec leurs jaquettes. Un c
 
 ![La fiche d'un jeu et ses options de lancement](docs/captures/fiche-options.png)
 
-Chaque option dit ce qu'elle fait gagner et ce qu'elle risque : performance CPU, vsync, vrai plein écran, Mode Jeu de macOS, compteur de performances, compilation des shaders en fond.
+Chaque option dit ce qu'elle fait gagner et ce qu'elle risque : performance CPU, vsync, vrai plein écran, Mode Jeu de macOS, overlay Steam, compteur de performances, compilation des shaders en fond.
 
 Trois niveaux, du plus faible au plus fort : ce que Cidre livre pour un jeu, tes **réglages généraux**, et ce que tu **forces pour un jeu** dans sa fiche. Une pastille marque ce que tu as réglé toi-même ; un clic y renonce.
 

@@ -211,6 +211,8 @@
 "Le jeu occupe tout l'écran, encoche comprise, comme un jeu natif." = "The game fills the whole screen, notch included, like a native game.";
 "Mode Jeu de macOS" = "macOS Game Mode";
 "Donne la priorité au jeu (processeur, carte graphique, manette) pendant la partie." = "Gives the game priority (CPU, GPU, controller) while you play.";
+"Overlay Steam" = "Steam overlay";
+"Maj+Tab en jeu : amis, succès, guides et notifications de Steam. À couper si un jeu s'affiche mal." = "Shift+Tab in game: Steam friends, achievements, guides and notifications. Turn it off if a game displays badly.";
 "Automatique" = "Automatic";
 "Langue du jeu" = "Game language";
 "Automatique : la langue de macOS et de Steam. Certains jeux n'obéissent qu'à leurs propres réglages." = "Automatic: the language of macOS and Steam. Some games only obey their own settings.";
