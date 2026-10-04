@@ -42,7 +42,10 @@ struct LibraryView: View {
                 }
                 ToolbarItem {
                     Button {
-                        Task { await library.reload() }
+                        Task {
+                            await library.reload()
+                            await library.checkUpdates(refresh: true)
+                        }
                     } label: {
                         Label("Actualiser", systemImage: "arrow.clockwise")
                     }
@@ -69,6 +72,7 @@ struct LibraryView: View {
             .task {
                 await library.reload()
                 await library.checkRuntime()
+                await library.checkUpdates()
                 // `Verger --jeu <id>` ouvre directement la fiche d'un jeu
                 let arguments = CommandLine.arguments
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
@@ -126,6 +130,7 @@ struct LibraryView: View {
                             isRunning: library.running.contains(game.id),
                             isSelected: selection == game.id,
                             download: game.appid.flatMap { library.downloads[$0] },
+                            updateAvailable: game.appid.map { library.updates[$0] != nil } ?? false,
                             cancelDownload: { game.appid.map(library.cancelDownload) },
                             play: { library.play(game) }
                         )

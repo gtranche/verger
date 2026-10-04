@@ -58,6 +58,26 @@ struct GameDetail: View {
             }
 
             Section {
+                if let appid = game.appid, library.downloads[appid] == nil, library.updates[appid] != nil {
+                    // Un jeu du dossier Cidre, c'est Cidre qui le met a jour ; un
+                    // jeu du client Steam, c'est Steam.
+                    if game.source == .cidre {
+                        Button {
+                            library.download(appid: appid)
+                        } label: {
+                            Label("Mettre à jour", systemImage: "arrow.down.circle")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .controlSize(.large)
+                        .disabled(library.running.contains(game.id))
+                    } else {
+                        Label("Une mise à jour est disponible : Steam l'installe.", systemImage: "arrow.down.circle")
+                            .font(.callout)
+                            .foregroundStyle(.orange)
+                        Button("Ouvrir les téléchargements de Steam") { library.openSteamDownloads() }
+                            .frame(maxWidth: .infinity)
+                    }
+                }
                 if let appid = game.appid, let progress = library.downloads[appid] {
                     DownloadStatus(progress: progress) { library.cancelDownload(appid: appid) }
                 } else if let appid = game.appid, game.source == .cidre, !game.installed {

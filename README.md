@@ -26,7 +26,8 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Régler une option de lancement d'un jeu | `cidre set <id> <option> <valeur>` |
 | Revenir au réglage livré par Cidre | `cidre unset <id> [option]` |
 | Les jeux Steam du compte, installés ou non | `cidre library --json [--refresh]` |
-| Télécharger un jeu Windows hors client | `cidre dl <appid> [windows\|macos]` |
+| Télécharger ou mettre à jour un jeu Windows hors client | `cidre dl <appid> [windows\|macos]` |
+| Les jeux installés dont une version plus récente est publiée | `cidre updates --json [--refresh]` |
 | Mémoriser la session Steam (au Terminal) | `cidre login` |
 | Ajouter un jeu non-Steam | `cidre add <jeu.exe> [nom] --json` |
 | Lancer un installeur Windows | `cidre run <fichier.exe>` |
@@ -48,7 +49,7 @@ C'est Verger qui s'en charge ; il n'y a pas d'installeur à lancer à côté.
 
 - **Installation.** Sans Cidre, Verger propose de l'installer : il télécharge l'archive `cidre-runtime.tar.xz` de la dernière release de Cidre (environ 400 Mo), la décompresse dans `~/Library/Application Support/Cidre/cidre`, puis lance `cidre setup`, qui prépare le pilote Vulkan, le préfixe Wine, DXVK, FEX, le pont Steam et SteamCMD. La configuration voyage avec le runtime : Verger n'en connaît pas les étapes, il les affiche.
 - **Mise à jour.** Au lancement, Verger compare la version installée (`cidre status`) à la dernière release et propose la mise à jour dans un bandeau. Elle décompresse par-dessus l'installation : les jeux, les sauvegardes (le préfixe Wine n'est pas dans l'archive) et `profils.toml` restent en place. Elle est refusée tant qu'un jeu tourne.
-- **Prérequis.** La pile charge encore deux bibliothèques Homebrew, `spirv-tools` et `freetype`. S'il en manque, Verger le dit et donne la commande `brew install` ; il ne les installe pas lui-même.
+- **Aucun prérequis.** À partir de Cidre 1.2.0, le runtime embarque les bibliothèques dont il dépend (zstd, SPIRV-Tools, FreeType, libpng) : ni Homebrew ni Terminal. Avec un runtime plus ancien, Verger signale celles qui manquent.
 
 Un dépôt de développement de Cidre (sans fichier `VERSION`) n'est jamais mis à jour par Verger. `VERGER_RUNTIME_URL` fait installer une archive donnée (fichier local ou miroir) au lieu de la dernière release, et `VERGER_CIDRE_HOME` change le dossier d'installation : pour essayer une version avant de la publier.
 
@@ -65,6 +66,8 @@ Le bouton **+** de la barre d'outils.
 La liste vient de la session SteamCMD mémorisée. S'il n'y en a pas, Verger ouvre sa fenêtre de connexion (voir « Connexion à Steam »).
 
 **Un jeu non-Steam.** « Ajouter un jeu non-Steam… » : tu choisis son `.exe`, il entre dans la bibliothèque et se lance par Cidre ; ses fichiers restent où ils sont. Si le jeu arrive sous forme d'installeur (GOG, itch…), « Lancer un installeur Windows… » l'exécute d'abord ; le sélecteur s'ouvre ensuite sur le disque C: du préfixe, là où il a déposé le jeu.
+
+**Mises à jour des jeux.** Au lancement (et au bouton Actualiser), Verger compare le build installé de chaque jeu Steam au dernier publié (`cidre updates`, une information publique lue sans compte). Un jeu en retard porte l'étiquette « Mise à jour » ; depuis sa fiche, un jeu du dossier Cidre se met à jour par Verger (`cidre dl`, avec avancement), un jeu du client Steam par Steam.
 
 **Désinstaller.** Depuis la fiche du jeu : un jeu non-Steam est retiré de la bibliothèque (fichiers intacts), un jeu du dossier Cidre est supprimé du disque après confirmation. Un jeu du client Steam se désinstalle depuis Steam.
 
@@ -98,7 +101,7 @@ Clés : `tso`, `vsync`, `hud`, `async`, `fils_compilation`, `eac_untrusted`, `lu
 ### 4. Connexion à Steam
 Une fenêtre dans Verger, pas de Terminal (bouton **+**, « Connexion à Steam… », ou d'elle-même quand la session manque) : identifiant, mot de passe, puis ce que Steam Guard demande — valider dans l'appli mobile, ou taper un code.
 
-Verger ne garde ni mot de passe ni jeton. Il prête un terminal à SteamCMD (`cidre login`), l'outil de Valve, lui relaie la saisie et l'oublie aussitôt ; c'est SteamCMD qui mémorise la session. La sortie brute de SteamCMD n'est jamais affichée ni journalisée, seulement la raison d'un refus (« mot de passe incorrect », « trop de tentatives »).
+Verger ne garde ni mot de passe ni jeton. Il prête un terminal à SteamCMD (`cidre login`), l'outil de Valve, lui relaie la saisie et l'oublie aussitôt ; c'est SteamCMD qui mémorise la session, dans un dossier à lui (`~/Library/Application Support/Cidre/steamcmd`) que le client Steam n'efface pas. Sans session, Cidre s'arrête et le dit : il ne laisse jamais SteamCMD tenter un mot de passe vide. La sortie brute de SteamCMD n'est jamais affichée ni journalisée, seulement la raison d'un refus (« mot de passe incorrect », « trop de tentatives »).
 
 **Cible : la connexion par QR code**, sans mot de passe du tout. SteamCMD ne sait pas la faire ; elle demande de le remplacer par un moteur bâti sur SteamKit (DepotDownloader) pour télécharger les jeux et lire la bibliothèque. À faire.
 
@@ -139,7 +142,8 @@ Scripts/test.sh
 - **Phase 2 — options par jeu** : panneau de réglages qui écrit `profils.toml` (`cidre set`). **Fait.**
 - **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec une fenêtre de connexion au-dessus de SteamCMD ; le login QR reste à faire.
 - **Installation et mise à jour de Cidre par Verger** (`cidre status`, `cidre setup`). **Fait.**
-- **Phase 4 — polish** : saves, auto-update de Verger lui-même (séparé du runtime), prérequis Homebrew embarqués dans le runtime.
+- **Mises à jour des jeux** (`cidre updates`). **Fait.**
+- **Phase 4 — polish** : saves, auto-update de Verger lui-même (séparé du runtime).
 
 ## Structure du dépôt
 

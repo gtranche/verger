@@ -127,7 +127,13 @@ public struct CidreCLI: Sendable {
         }
     }
 
-    /// `cidre dl <appid> <platform>` : telecharge le jeu dans le dossier Cidre,
+    /// `cidre updates --json` : pour chaque jeu Steam installe, son build face au
+    /// dernier publie. Information publique, lue sans compte.
+    public func updates(refresh: Bool = false) async throws -> [GameUpdate] {
+        try await json(["updates", "--json"] + (refresh ? ["--refresh"] : []))
+    }
+
+    /// `cidre dl <appid> <platform>` : telecharge (ou met a jour) le jeu dans le dossier Cidre,
     /// en rapportant l'avancement. Annuler la tache arrete le telechargement
     /// (SteamCMD le reprendra ou il en etait).
     public func download(
@@ -172,7 +178,8 @@ public struct CidreCLI: Sendable {
             if process.isRunning { process.terminate() }
         }
 
-        if tail.sawPasswordPrompt { throw CidreError.steamSessionMissing }
+        // code 3 : Cidre n'a pas de session Steam memorisee
+        if tail.sawPasswordPrompt || process.terminationStatus == 3 { throw CidreError.steamSessionMissing }
         try Task.checkCancellation()
         guard process.terminationStatus == 0 else {
             throw CidreError.commandFailed(

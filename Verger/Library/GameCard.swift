@@ -8,6 +8,8 @@ struct GameCard: View {
     let isSelected: Bool
     /// Telechargement en cours pour ce jeu, s'il y en a un.
     var download: DownloadProgress?
+    /// Une version plus recente du jeu est publiee.
+    var updateAvailable = false
     var cancelDownload: () -> Void = {}
     let play: () -> Void
 
@@ -29,9 +31,18 @@ struct GameCard: View {
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     PlatformBadge(game: game)
-                    Text(game.sizeBytes.formatted(.byteCount(style: .file)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if updateAvailable {
+                        Text("Mise à jour")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .foregroundStyle(.orange)
+                            .background(Color.orange.opacity(0.15), in: Capsule())
+                    } else {
+                        Text(game.sizeBytes.formatted(.byteCount(style: .file)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }

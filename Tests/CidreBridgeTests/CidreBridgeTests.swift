@@ -138,6 +138,7 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
+          updates) echo '[{"appid":588650,"build_installe":1,"build_disponible":23762174,"a_jour":false},{"appid":552500,"build_installe":7,"build_disponible":7,"a_jour":true}]' ;;
           set|unset) echo "$*" >> "$(dirname "$0")/reglages.txt"
                      if [ "$2" = inconnu ]; then echo "jeu inconnu : $2" >&2; exit 1; fi ;;
           rm) [ "$2" = local-x ] || { echo "jeu inconnu : $2" >&2; exit 1; } ;;
@@ -146,6 +147,7 @@ private let infoJSON = """
                    printf ' Update state (0x61) downloading, progress: 100.00 (10 / 10)\\nSuccess!\\n' ;;
                 2) printf 'Logging in user...\\npassword: '; sleep 30 ;;
                 3) echo "Echec SteamCMD (rc=8)."; exit 8 ;;
+                5) echo "Session Steam non memorisee" >&2; exit 3 ;;
                 4) sleep 30 ;;
               esac ;;
         esac
@@ -191,6 +193,13 @@ private let infoJSON = """
     #expect(seen.all.contains(DownloadProgress(fraction: 0.5, doneBytes: 5, totalBytes: 10)))
 
     await #expect(throws: CidreError.steamSessionMissing) { try await cli.download(appid: 2) { _ in } }
+    // Cidre s'arrete de lui-meme sans session : code 3
+    await #expect(throws: CidreError.steamSessionMissing) { try await cli.download(appid: 5) { _ in } }
+
+    // mises a jour des jeux
+    let updates = try await cli.updates()
+    #expect(updates.map(\.upToDate) == [false, true])
+    #expect(updates[0].appid == 588650 && updates[0].availableBuild == 23_762_174)
 
     do {
         try await cli.download(appid: 3) { _ in }

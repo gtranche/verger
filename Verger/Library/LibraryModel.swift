@@ -39,6 +39,8 @@ final class LibraryModel {
 
     private(set) var ownedState: OwnedState = .idle
     private(set) var owned: [OwnedGame] = []
+    /// Les jeux Steam installes dont une version plus recente est publiee, par appid.
+    private(set) var updates: [Int: GameUpdate] = [:]
     /// Telechargements en cours, par appid.
     private(set) var downloads: [Int: DownloadProgress] = [:]
     private var downloadTasks: [Int: Task<Void, Never>] = [:]
@@ -147,6 +149,20 @@ final class LibraryModel {
         if ownedState == .loaded { await loadOwned() }
     }
 
+    // MARK: Mises a jour des jeux
+
+    /// Regarde quels jeux Steam installes ont une version plus recente publiee.
+    /// Silencieux en cas d'echec (hors ligne, Cidre trop ancien) : on ne sait pas, c'est tout.
+    func checkUpdates(refresh: Bool = false) async {
+        guard let found = try? await cli?.updates(refresh: refresh) else { return }
+        updates = Dictionary(uniqueKeysWithValues: found.filter { !$0.upToDate }.map { ($0.appid, $0) })
+    }
+
+    /// Un jeu du client Steam se met a jour dans Steam : on ouvre ses telechargements.
+    func openSteamDownloads() {
+        if let url = URL(string: "steam://open/downloads") { NSWorkspace.shared.open(url) }
+    }
+
     // MARK: Runtime Cidre
 
     /// Lit l'etat du runtime et regarde si une version plus recente est publiee.
@@ -236,6 +252,7 @@ final class LibraryModel {
             downloads[appid] = nil
             downloadTasks[appid] = nil
             await reload()
+            await checkUpdates()
             if ownedState == .loaded { await loadOwned() }
         }
         // le dossier du jeu apparait des le debut : on le montre dans la grille

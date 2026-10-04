@@ -165,6 +165,21 @@ public struct OwnedGame: Decodable, Identifiable, Hashable, Sendable {
     }
 }
 
+/// La version installee d'un jeu Steam face a la derniere publiee (`cidre updates --json`).
+public struct GameUpdate: Decodable, Equatable, Sendable {
+    public let appid: Int
+    public let installedBuild: Int
+    public let availableBuild: Int
+    public let upToDate: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case appid
+        case installedBuild = "build_installe"
+        case availableBuild = "build_disponible"
+        case upToDate = "a_jour"
+    }
+}
+
 /// L'avancement d'un `cidre dl`, lu dans la sortie de SteamCMD.
 public struct DownloadProgress: Equatable, Sendable {
     /// De 0 a 1.
