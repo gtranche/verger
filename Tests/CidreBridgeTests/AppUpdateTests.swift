@@ -94,3 +94,17 @@ private final class Said: @unchecked Sendable {
         try await AppUpdater.install(AppRelease(version: "1", archive: zip), replacing: dir.appendingPathComponent("Verger"))
     }
 }
+
+/// La vraie release de Verger, depuis GitHub, sur une COPIE de l'application.
+///   VERGER_ESSAI_MAJ=/dossier/jetable/Verger.app Scripts/test.sh --filter metAJourDepuisGitHub
+@Test(.enabled(if: ProcessInfo.processInfo.environment["VERGER_ESSAI_MAJ"] != nil))
+func metAJourDepuisGitHub() async throws {
+    let app = URL(fileURLWithPath: ProcessInfo.processInfo.environment["VERGER_ESSAI_MAJ"]!)
+    let release = try await AppUpdater.latestRelease()
+    #expect(release.archive.lastPathComponent == AppUpdater.assetName)
+    try await AppUpdater.install(release, replacing: app)
+    let plist = NSDictionary(contentsOf: app.appendingPathComponent("Contents/Info.plist"))
+    #expect(plist?["CFBundleShortVersionString"] as? String == release.version)
+    #expect(try await RuntimeInstaller.run("/usr/bin/codesign", ["--verify", "--deep", app.path]).status == 0)
+    print("mis a jour : Verger \(release.version)")
+}
