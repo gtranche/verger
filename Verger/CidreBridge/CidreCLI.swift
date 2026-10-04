@@ -33,8 +33,8 @@ public struct CidreCLI: Sendable {
     // MARK: Detection
 
     /// Emplacements ou chercher la CLI, du plus explicite au plus general :
-    /// le choix de l'utilisateur, `VERGER_CIDRE`, l'install standard de
-    /// `installer_cidre.sh`, puis le PATH.
+    /// le choix de l'utilisateur, `VERGER_CIDRE`, le Cidre que Verger installe
+    /// lui-meme, puis le PATH.
     public static func candidates(
         userChoice: String? = nil,
         environment: [String: String] = ProcessInfo.processInfo.environment,
@@ -43,7 +43,8 @@ public struct CidreCLI: Sendable {
         var paths: [String] = []
         if let userChoice, !userChoice.isEmpty { paths.append(userChoice) }
         if let env = environment["VERGER_CIDRE"], !env.isEmpty { paths.append(env) }
-        paths.append(home.appendingPathComponent("Library/Application Support/Cidre/cidre/cidre").path)
+        paths.append(RuntimeInstaller.defaultHome(environment: environment, userHome: home)
+            .appendingPathComponent("cidre/cidre").path)
         for dir in (environment["PATH"] ?? "").split(separator: ":") {
             paths.append("\(dir)/cidre")
         }

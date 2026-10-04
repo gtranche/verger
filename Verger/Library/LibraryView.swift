@@ -62,6 +62,7 @@ struct LibraryView: View {
             }
             .task {
                 await library.reload()
+                await library.checkRuntime()
                 // `Verger --jeu <id>` ouvre directement la fiche d'un jeu
                 let arguments = CommandLine.arguments
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
@@ -77,14 +78,7 @@ struct LibraryView: View {
             ProgressView("Lecture de la bibliothèque…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .cidreMissing:
-            ContentUnavailableView {
-                Label("Cidre introuvable", systemImage: "shippingbox")
-            } description: {
-                Text("Verger pilote Cidre mais ne le contient pas. Installe Cidre, ou indique où se trouve sa commande `cidre`.")
-            } actions: {
-                Button("Choisir la commande cidre…") { chooseCidre() }
-                Link("Installer Cidre", destination: URL(string: "https://github.com/gtranche/cidre/releases/latest")!)
-            }
+            RuntimeMissingView(chooseCidre: chooseCidre)
         case let .failed(message):
             ContentUnavailableView {
                 Label("Bibliothèque illisible", systemImage: "exclamationmark.triangle")
@@ -105,7 +99,7 @@ struct LibraryView: View {
                     }
                 }
             } else {
-                grid
+                grid.safeAreaInset(edge: .top, spacing: 0) { RuntimeBanners() }
             }
         }
     }

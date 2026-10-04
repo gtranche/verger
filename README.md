@@ -10,7 +10,7 @@ Cidre = le moteur (FEX + Wine + DXVK + KosmicKrisp). Verger = le verger où pous
 
 Le runtime Cidre pèse des **gigas** (Wine arm64, Mesa/KosmicKrisp, DXVK, FEX…). L'UI, elle, change **souvent** et pèse **quelques Mo**. Les mélanger obligerait à re-pousser / re-télécharger tout le runtime à chaque correction d'un bouton.
 
-→ **Verger est un dépôt et un binaire indépendants.** Il ne contient aucun binaire de runtime. Il **détecte / installe / met à jour Cidre séparément**. On peut patcher l'UI 10 fois par jour sans que personne ne retélécharge un seul octet de Wine.
+→ **Verger est un dépôt et un binaire indépendants.** Il ne contient aucun binaire de runtime. Il **détecte / installe / met à jour Cidre séparément** (voir « Installer et mettre à jour Cidre »). On peut patcher l'UI 10 fois par jour sans que personne ne retélécharge un seul octet de Wine.
 
 Conséquence d'archi : la frontière Verger ↔ Cidre est un **contrat stable** (la CLI `cidre`), pas un couplage de code.
 
@@ -32,13 +32,25 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Lancer un installeur Windows | `cidre run <fichier.exe>` |
 | Où l'installeur a déposé le jeu | `cidre prefix` |
 | Retirer un jeu non-Steam / désinstaller un jeu du dossier Cidre | `cidre rm <id>` |
+| État du runtime (version, prérequis, jeu en cours) | `cidre status --json` |
+| Configurer le runtime après installation ou mise à jour | `cidre setup` |
 | Sauvegardes (iCloud) | `cidre sync <appid\|all> [backup\|restore]` |
 
 Un jeu a un `id` : son appid Steam, ou `local-…` pour un jeu non-Steam.
 
 Verger parse ce JSON (`Verger/CidreBridge`) ; il ne scrape jamais la sortie texte. Une valeur qu'il ne connaît pas (CLI plus récente) retombe sur une valeur neutre au lieu de faire tomber la bibliothèque.
 
-Verger cherche la commande `cidre` dans cet ordre : le chemin choisi dans l'app, la variable `VERGER_CIDRE`, l'install standard (`~/Library/Application Support/Cidre/cidre/cidre`), puis le `PATH`.
+Verger cherche la commande `cidre` dans cet ordre : le chemin choisi dans l'app, la variable `VERGER_CIDRE`, le Cidre qu'il a installé lui-même (`~/Library/Application Support/Cidre/cidre/cidre`), puis le `PATH`.
+
+## Installer et mettre à jour Cidre
+
+C'est Verger qui s'en charge ; il n'y a pas d'installeur à lancer à côté.
+
+- **Installation.** Sans Cidre, Verger propose de l'installer : il télécharge l'archive `cidre-runtime.tar.xz` de la dernière release de Cidre (environ 400 Mo), la décompresse dans `~/Library/Application Support/Cidre/cidre`, puis lance `cidre setup`, qui prépare le pilote Vulkan, le préfixe Wine, DXVK, FEX, le pont Steam et SteamCMD. La configuration voyage avec le runtime : Verger n'en connaît pas les étapes, il les affiche.
+- **Mise à jour.** Au lancement, Verger compare la version installée (`cidre status`) à la dernière release et propose la mise à jour dans un bandeau. Elle décompresse par-dessus l'installation : les jeux, les sauvegardes (le préfixe Wine n'est pas dans l'archive) et `profils.toml` restent en place. Elle est refusée tant qu'un jeu tourne.
+- **Prérequis.** La pile charge encore deux bibliothèques Homebrew, `spirv-tools` et `freetype`. S'il en manque, Verger le dit et donne la commande `brew install` ; il ne les installe pas lui-même.
+
+Un dépôt de développement de Cidre (sans fichier `VERSION`) n'est jamais mis à jour par Verger. `VERGER_RUNTIME_URL` fait installer une archive donnée (fichier local ou miroir) au lieu de la dernière release, et `VERGER_CIDRE_HOME` change le dossier d'installation : pour essayer une version avant de la publier.
 
 ## Fonctionnalités
 
@@ -127,7 +139,8 @@ Scripts/test.sh
 - **Phase 1 — Verger lecture seule** : bibliothèque + bouton Jouer (`cidre play`) sur les jeux déjà installés, fiche du jeu avec ses options actives. **Fait.**
 - **Phase 2 — options par jeu** : panneau de réglages qui écrit `profils.toml` (`cidre set`). **Fait.**
 - **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec la session SteamCMD mémorisée ; le login QR reste à faire.
-- **Phase 4 — polish** : saves, MAJ, détection auto de Cidre + auto-update de Verger (séparé du runtime).
+- **Installation et mise à jour de Cidre par Verger** (`cidre status`, `cidre setup`). **Fait.**
+- **Phase 4 — polish** : saves, auto-update de Verger lui-même (séparé du runtime), prérequis Homebrew embarqués dans le runtime.
 
 ## Structure du dépôt
 
@@ -139,6 +152,7 @@ verger/
     Library/           # vue bibliothèque : grille, jaquettes, fiche du jeu
     GameSettings/      # options de lancement par jeu
     Install/           # installer un jeu Steam du compte
+    Runtime/           # installer et mettre à jour Cidre
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)
   Tests/               # tests du pont
   Scripts/             # bundle.sh (Verger.app), test.sh

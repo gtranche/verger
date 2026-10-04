@@ -43,6 +43,13 @@ final class LibraryModel {
     private(set) var downloads: [Int: DownloadProgress] = [:]
     private var downloadTasks: [Int: Task<Void, Never>] = [:]
 
+    /// L'etat du runtime Cidre (`cidre status`), et la release plus recente s'il y en a une.
+    private(set) var runtimeStatus: RuntimeStatus?
+    private(set) var availableUpdate: RuntimeRelease?
+    /// Non nul pendant une installation ou une mise a jour de Cidre.
+    private(set) var runtimeStep: RuntimeInstaller.Step?
+    private var runtimeTask: Task<Void, Never>?
+
     /// Chemin de la CLI choisi a la main (sinon detection automatique).
     var cidrePath: String? = UserDefaults.standard.string(forKey: "cidrePath") {
         didSet { UserDefaults.standard.set(cidrePath, forKey: "cidrePath") }
@@ -128,6 +135,57 @@ final class LibraryModel {
         }
         await reload()
         if ownedState == .loaded { await loadOwned() }
+    }
+
+    // MARK: Runtime Cidre
+
+    /// Lit l'etat du runtime et regarde si une version plus recente est publiee.
+    /// Un depot de developpement (version « dev ») ne se met pas a jour par Verger.
+    func checkRuntime() async {
+        guard let cli else {
+            runtimeStatus = nil
+            return
+        }
+        // une CLI d'avant `cidre status` : pas d'etat, pas de mise a jour proposee
+        guard let status = try? await cli.status() else { return }
+        runtimeStatus = status
+        guard !status.isDevelopmentCheckout,
+              let latest = try? await RuntimeInstaller.latestRelease() else {
+            availableUpdate = nil
+            return
+        }
+        availableUpdate = latest.isNewer(than: status.version) ? latest : nil
+    }
+
+    /// Installe Cidre, ou le met a jour : telechargement, decompression, puis
+    /// `cidre setup`. Les jeux, les sauvegardes et les reglages restent en place.
+    func installRuntime() {
+        guard runtimeTask == nil else { return }
+        runtimeStep = .downloading(doneBytes: 0, totalBytes: availableUpdate?.sizeBytes ?? 0)
+        runtimeTask = Task {
+            do {
+                let release = if let availableUpdate { availableUpdate } else { try await RuntimeInstaller.latestRelease() }
+                _ = try await RuntimeInstaller().install(release) { step in
+                    Task { @MainActor in
+                        // une etape arrivee apres la fin ne doit pas la ressusciter
+                        if self.runtimeStep != nil { self.runtimeStep = step }
+                    }
+                }
+                availableUpdate = nil
+            } catch is CancellationError {
+                // arrete par l'utilisateur
+            } catch {
+                lastError = error.localizedDescription
+            }
+            runtimeStep = nil
+            runtimeTask = nil
+            await reload()
+            await checkRuntime()
+        }
+    }
+
+    func cancelRuntimeInstall() {
+        runtimeTask?.cancel()
     }
 
     // MARK: Jeux Steam du compte
