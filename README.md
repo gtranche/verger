@@ -23,6 +23,8 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Lister les jeux (plateforme, mode, installé ?) | `cidre list --json` |
 | Fiche d'un jeu (taille, chemin, options actives) | `cidre info <id> --json` |
 | Lancer un jeu | `cidre play <id>` |
+| Régler une option de lancement d'un jeu | `cidre set <id> <option> <valeur>` |
+| Revenir au réglage livré par Cidre | `cidre unset <id> [option]` |
 | Les jeux Steam du compte, installés ou non | `cidre library --json [--refresh]` |
 | Télécharger un jeu Windows hors client | `cidre dl <appid> [windows\|macos]` |
 | Mémoriser la session Steam (au Terminal) | `cidre login` |
@@ -67,7 +69,9 @@ Un panneau de réglages **par jeu**, avec des interrupteurs pour **activer/désa
 | Correctif LuaJIT | `PROTON_OUVERT_LUAJIT=1` | requis VT2 |
 | Plein écran / encoche | (à venir côté Cidre) | couvrir l'encoche comme le natif |
 
-**Modèle :** un profil **par défaut** + des **surcharges par appid**, dans un fichier de données que `cidre play` lit et que **Verger écrit** : `~/Library/Application Support/Cidre/profils.toml`.
+Dans la fiche du jeu, chaque interrupteur dit ce qu'il fait gagner et ce qu'il risque. Une pastille marque les options que tu as réglées toi-même ; « Rétablir les réglages de Cidre » y revient. Le changement s'applique au prochain lancement.
+
+**Modèle :** un profil **par défaut** + des **surcharges par jeu**, dans un fichier de données que `cidre play` lit et que Verger écrit par `cidre set` : `~/Library/Application Support/Cidre/profils.toml`.
 
 ```toml
 [defaut]
@@ -121,7 +125,7 @@ Scripts/test.sh
 
 - **Phase 0 — plomberie** (côté Cidre) : `cidre list --json`, `cidre info --json`, `profils.toml`. **Fait.**
 - **Phase 1 — Verger lecture seule** : bibliothèque + bouton Jouer (`cidre play`) sur les jeux déjà installés, fiche du jeu avec ses options actives. **Fait.**
-- **Phase 2 — options par jeu** : panneau de réglages qui écrit `profils.toml`.
+- **Phase 2 — options par jeu** : panneau de réglages qui écrit `profils.toml` (`cidre set`). **Fait.**
 - **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec la session SteamCMD mémorisée ; le login QR reste à faire.
 - **Phase 4 — polish** : saves, MAJ, détection auto de Cidre + auto-update de Verger (séparé du runtime).
 
@@ -133,13 +137,14 @@ verger/
   Verger/
     VergerApp.swift
     Library/           # vue bibliothèque : grille, jaquettes, fiche du jeu
+    GameSettings/      # options de lancement par jeu
     Install/           # installer un jeu Steam du compte
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)
   Tests/               # tests du pont
   Scripts/             # bundle.sh (Verger.app), test.sh
 ```
 
-À venir : `Verger/GameSettings/` (Phase 2), `Verger/Login/` et `Tools/` (DepotDownloader, pour le login QR).
+À venir : `Verger/Login/` et `Tools/` (DepotDownloader, pour le login QR).
 
 ---
 *Cidre est le moteur, Verger est la vitrine. Deux dépôts, un contrat (la CLI). On patche l'un sans retélécharger l'autre.*

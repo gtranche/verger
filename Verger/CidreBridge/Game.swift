@@ -80,11 +80,15 @@ public struct GameInfo: Decodable, Sendable {
     public let game: Game
     /// Le jeu a une ligne dans saves.conf (sauvegardes synchronisees vers iCloud).
     public let savesSynced: Bool
+    /// Les options resolues : reglages livres par Cidre + ceux de l'utilisateur.
     public let options: LaunchOptions
+    /// Les options que l'utilisateur a lui-meme reglees pour ce jeu.
+    public let overridden: Set<LaunchOptions.Key>
 
     enum CodingKeys: String, CodingKey {
         case savesSynced = "sauvegardes"
         case options
+        case overrides = "options_perso"
     }
 
     public init(from decoder: Decoder) throws {
@@ -92,6 +96,13 @@ public struct GameInfo: Decodable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         savesSynced = try c.decodeIfPresent(Bool.self, forKey: .savesSynced) ?? false
         options = try c.decodeIfPresent(LaunchOptions.self, forKey: .options) ?? LaunchOptions()
+        let overrides = try c.decodeIfPresent([String: OptionValue].self, forKey: .overrides) ?? [:]
+        overridden = Set(overrides.keys.compactMap(LaunchOptions.Key.init(rawValue:)))
+    }
+
+    /// Une valeur d'option, dont seul le nom de la cle nous interesse ici.
+    private struct OptionValue: Decodable {
+        init(from decoder: Decoder) throws {}
     }
 }
 
@@ -111,12 +122,15 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
 
     public init() {}
 
-    enum CodingKeys: String, CodingKey {
+    /// Les noms des options pour la CLI (`cidre set <id> <option> <valeur>`).
+    public enum Key: String, CodingKey, CaseIterable, Sendable {
         case tso, vsync, hud, luajit
         case asyncShaders = "async"
         case compilerThreads = "fils_compilation"
         case eacUntrusted = "eac_untrusted"
     }
+
+    typealias CodingKeys = Key
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)

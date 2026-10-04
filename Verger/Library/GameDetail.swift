@@ -1,9 +1,8 @@
 import CidreBridge
 import SwiftUI
 
-/// La fiche d'un jeu (`cidre info --json`) : ou il vit, et ses options de
-/// lancement actives. En lecture seule pour l'instant ; le panneau qui ecrit
-/// profils.toml arrive avec la Phase 2.
+/// La fiche d'un jeu (`cidre info --json`) : ou il vit, ses options de
+/// lancement, et ce qu'on peut en faire (jouer, desinstaller).
 struct GameDetail: View {
     let game: Game
     @Environment(LibraryModel.self) private var library
@@ -45,27 +44,17 @@ struct GameDetail: View {
                 Text(game.name).font(.title3.weight(.semibold))
             }
 
-            Section("Options de lancement") {
-                if let options = info?.options {
-                    if game.launch == .native {
-                        Text("Jeu natif : lancé par Steam, sans la pile Cidre.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        OptionRow("Ordre mémoire strict (TSO)", on: options.tso)
-                        OptionRow("Vsync", on: options.vsync)
-                        OptionRow("HUD fps / GPU", on: options.hud)
-                        OptionRow("Shaders en fond (async)", on: options.asyncShaders)
-                        if options.compilerThreads > 0 {
-                            LabeledContent("Fils compilateurs", value: String(options.compilerThreads))
-                        }
-                        OptionRow("Anti-triche permissif (Modded)", on: options.eacUntrusted)
-                        OptionRow("Correctif LuaJIT", on: options.luajit)
-                    }
-                } else if let error {
-                    Text(error).foregroundStyle(.red)
-                } else {
-                    ProgressView().controlSize(.small)
+            if game.launch == .native {
+                Section("Options de lancement") {
+                    Text("Jeu natif : lancé par Steam, sans la pile Cidre.")
+                        .foregroundStyle(.secondary)
                 }
+            } else if let error {
+                Section("Options de lancement") {
+                    Text(error).foregroundStyle(.red)
+                }
+            } else {
+                LaunchOptionsSection(game: game, info: $info)
             }
 
             Section {
@@ -131,23 +120,6 @@ struct GameDetail: View {
             } catch {
                 self.error = error.localizedDescription
             }
-        }
-    }
-}
-
-private struct OptionRow: View {
-    let title: String
-    let on: Bool
-
-    init(_ title: String, on: Bool) {
-        self.title = title
-        self.on = on
-    }
-
-    var body: some View {
-        LabeledContent(title) {
-            Text(on ? "Activé" : "Désactivé")
-                .foregroundStyle(on ? .primary : .secondary)
         }
     }
 }

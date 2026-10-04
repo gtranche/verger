@@ -90,6 +90,18 @@ final class LibraryModel {
         try await cli?.info(id: game.id)
     }
 
+    /// Applique un changement d'options (`cidre set` / `cidre unset`) et rend la
+    /// fiche a jour, telle que Cidre la resout apres coup.
+    func changeOptions(of game: Game, _ change: @escaping @Sendable (CidreCLI) async throws -> Void) async -> GameInfo? {
+        guard let cli else { return nil }
+        do {
+            try await change(cli)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        return try? await cli.info(id: game.id)
+    }
+
     func play(_ game: Game) {
         guard let cli, !running.contains(game.id) else { return }
         running.insert(game.id)

@@ -60,7 +60,14 @@ struct LibraryView: View {
             } message: {
                 Text(library.lastError ?? "")
             }
-            .task { await library.reload() }
+            .task {
+                await library.reload()
+                // `Verger --jeu <id>` ouvre directement la fiche d'un jeu
+                let arguments = CommandLine.arguments
+                if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
+                    selection = arguments[flag + 1]
+                }
+            }
     }
 
     @ViewBuilder

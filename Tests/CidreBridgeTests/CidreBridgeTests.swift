@@ -14,7 +14,7 @@ private let listJSON = """
     """
 
 private let infoJSON = """
-    {"appid":552500,"nom":"Warhammer: Vermintide 2","plateforme":"windows","lancement":"cidre","source":"steam","installe":true,"wrapper":true,"chemin":"/jeux/vt2","taille":68863410968,"dernier_lancement":1791039401,"sauvegardes":true,"options":{"tso":true,"vsync":true,"hud":false,"async":true,"fils_compilation":4,"eac_untrusted":true,"luajit":true}}
+    {"appid":552500,"nom":"Warhammer: Vermintide 2","plateforme":"windows","lancement":"cidre","source":"steam","installe":true,"wrapper":true,"chemin":"/jeux/vt2","taille":68863410968,"dernier_lancement":1791039401,"sauvegardes":true,"options":{"tso":true,"vsync":true,"hud":false,"async":true,"fils_compilation":6,"eac_untrusted":true,"luajit":true},"options_perso":{"fils_compilation":6,"hud":false,"plus_tard":"x"}}
     """
 
 @Test func decodeLaListe() throws {
@@ -91,7 +91,9 @@ private let infoJSON = """
     #expect(info.game.id == "552500")
     #expect(info.savesSynced)
     #expect(info.options.asyncShaders)
-    #expect(info.options.compilerThreads == 4)
+    #expect(info.options.compilerThreads == 6)
+    // ce que le joueur a regle lui-meme ; une cle inconnue de Verger est ignoree
+    #expect(info.overridden == [.compilerThreads, .hud])
     #expect(info.options.eacUntrusted)
     #expect(info.options.luajit)
     #expect(info.options.tso)
@@ -136,6 +138,8 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
+          set|unset) echo "$*" >> "$(dirname "$0")/reglages.txt"
+                     if [ "$2" = inconnu ]; then echo "jeu inconnu : $2" >&2; exit 1; fi ;;
           rm) [ "$2" = local-x ] || { echo "jeu inconnu : $2" >&2; exit 1; } ;;
           dl) case "$2" in
                 1) printf ' Update state (0x61) downloading, progress: 50.00 (5 / 10)\\n'; sleep 0.2
@@ -165,6 +169,20 @@ private let infoJSON = """
     #expect(try await cli.prefix().path == "/prefixe/drive_c")
     try await cli.remove(id: "local-x")
     await #expect(throws: CidreError.self) { try await cli.remove(id: "local-y") }
+
+    // options de lancement : les commandes exactes que recoit la CLI
+    try await cli.setOption(id: "552500", .tso, to: false)
+    try await cli.setOption(id: "local-x", .compilerThreads, to: 4)
+    try await cli.resetOptions(id: "552500", .asyncShaders)
+    try await cli.resetOptions(id: "552500")
+    #expect(try String(contentsOf: dir.appendingPathComponent("reglages.txt"), encoding: .utf8) == """
+        set 552500 tso false
+        set local-x fils_compilation 4
+        unset 552500 async
+        unset 552500
+
+        """)
+    await #expect(throws: CidreError.self) { try await cli.setOption(id: "inconnu", .hud, to: true) }
 
     // telechargement : avancement, session absente, echec, annulation
     let seen = Seen()

@@ -85,6 +85,24 @@ public struct CidreCLI: Sendable {
         try await runLogged(["play", id], log: log)
     }
 
+    // MARK: Options de lancement
+
+    /// `cidre set <id> <option> <valeur>` : regle une option pour ce jeu, dans
+    /// le profils.toml de l'utilisateur. S'applique au prochain lancement.
+    public func setOption(id: String, _ key: LaunchOptions.Key, to value: Bool) async throws {
+        _ = try await checked(["set", id, key.rawValue, value ? "true" : "false"])
+    }
+
+    public func setOption(id: String, _ key: LaunchOptions.Key, to value: Int) async throws {
+        _ = try await checked(["set", id, key.rawValue, String(value)])
+    }
+
+    /// `cidre unset <id> [option]` : revient au reglage livre par Cidre, pour
+    /// une option ou (sans `key`) pour toutes celles du jeu.
+    public func resetOptions(id: String, _ key: LaunchOptions.Key? = nil) async throws {
+        _ = try await checked(["unset", id] + (key.map { [$0.rawValue] } ?? []))
+    }
+
     // MARK: Steam
 
     /// `cidre library --json` : les jeux que possede le compte, installes ou non.
