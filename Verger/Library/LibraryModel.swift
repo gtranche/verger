@@ -143,6 +143,20 @@ final class LibraryModel {
         }
     }
 
+    /// Un jeu du client Steam appartient a sa bibliotheque : c'est Steam qui le
+    /// desinstalle, apres avoir demande confirmation dans sa propre fenetre.
+    func uninstallFromSteam(_ game: Game) {
+        guard let appid = game.appid, let url = URL(string: "steam://uninstall/\(appid)") else { return }
+        NSWorkspace.shared.open(url)
+        // Steam prend son temps : on relit la bibliotheque a plusieurs reprises.
+        Task {
+            for delay in [5, 15, 40] {
+                try? await Task.sleep(for: .seconds(delay))
+                await reload()
+            }
+        }
+    }
+
     /// Retire un jeu hors Steam, ou desinstalle un jeu du dossier Cidre.
     func remove(_ game: Game) async {
         guard let cli else { return }

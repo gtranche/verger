@@ -118,7 +118,9 @@ struct GameDetail: View {
                         .frame(maxWidth: .infinity)
                         .disabled(game.appid.map { library.downloads[$0] != nil } ?? false)
                 case .steam:
-                    EmptyView()
+                    Button("Désinstaller…", role: .destructive) { confirmingUninstall = true }
+                        .frame(maxWidth: .infinity)
+                        .disabled(library.running.contains(game.id))
                 }
             }
         }
@@ -126,11 +128,19 @@ struct GameDetail: View {
         .confirmationDialog(
             "Désinstaller \(game.name) ?", isPresented: $confirmingUninstall
         ) {
-            Button("Désinstaller", role: .destructive) {
-                Task { await library.remove(game) }
+            if game.source == .steam {
+                Button("Désinstaller avec Steam", role: .destructive) { library.uninstallFromSteam(game) }
+            } else {
+                Button("Désinstaller", role: .destructive) {
+                    Task { await library.remove(game) }
+                }
             }
         } message: {
-            Text("Ses fichiers (\(game.sizeBytes.formatted(.byteCount(style: .file)))) seront supprimés du disque. Tu pourras le réinstaller depuis tes jeux Steam.")
+            if game.source == .steam {
+                Text("Ce jeu est dans la bibliothèque du client Steam : Steam va s'ouvrir et te demander de confirmer. Ses fichiers (\(game.sizeBytes.formatted(.byteCount(style: .file)))) seront supprimés ; tu pourras le réinstaller depuis tes jeux Steam.")
+            } else {
+                Text("Ses fichiers (\(game.sizeBytes.formatted(.byteCount(style: .file)))) seront supprimés du disque. Tu pourras le réinstaller depuis tes jeux Steam.")
+            }
         }
         .task(id: game.id) {
             info = nil

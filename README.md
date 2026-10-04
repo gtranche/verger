@@ -72,7 +72,7 @@ La liste vient de la session SteamCMD mémorisée. S'il n'y en a pas, Verger ouv
 
 **Mises à jour des jeux.** Au lancement (et au bouton Actualiser), Verger compare le build installé de chaque jeu Steam au dernier publié (`cidre updates`, une information publique lue sans compte). Un jeu en retard porte l'étiquette « Mise à jour » ; depuis sa fiche, un jeu du dossier Cidre se met à jour par Verger (`cidre dl`, avec avancement), un jeu du client Steam par Steam.
 
-**Désinstaller.** Depuis la fiche du jeu : un jeu non-Steam est retiré de la bibliothèque (fichiers intacts), un jeu du dossier Cidre est supprimé du disque après confirmation. Un jeu du client Steam se désinstalle depuis Steam.
+**Désinstaller.** Depuis la fiche du jeu : un jeu non-Steam est retiré de la bibliothèque (fichiers intacts), un jeu du dossier Cidre est supprimé du disque après confirmation. Un jeu du client Steam est désinstallé par Steam, que Verger ouvre sur sa demande de confirmation.
 
 ### 3. Options de lancement par jeu  ← demande explicite
 Un panneau de réglages **par jeu**, avec des interrupteurs pour **activer/désactiver des fonctionnalités**. Chaque interrupteur mappe une variable que `cidre play` lit déjà :

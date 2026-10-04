@@ -38,5 +38,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 codesign --force --sign - "$APP" >/dev/null
 echo "OK : $APP ($(du -sh "$APP" | cut -f1))"
-[ "${1:-}" = --open ] && open "$APP"
+if [ "${1:-}" = --open ]; then
+   # Un Verger deja ouvert resterait a l'ecran sur l'ancienne version : `open`
+   # ne ferait que le ramener au premier plan. On le quitte d'abord.
+   osascript -e 'tell application id "io.github.gtranche.verger" to quit' >/dev/null 2>&1 || true
+   sleep 1
+   open "$APP"
+fi
 exit 0
