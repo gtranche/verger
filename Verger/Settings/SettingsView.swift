@@ -201,10 +201,13 @@ private struct OptionsSettings: View {
 
 private struct VergerSettings: View {
     @Environment(AppUpdateModel.self) private var updater
+    @Environment(LibraryModel.self) private var library
     @AppStorage("langue") private var language = ""
     @AppStorage("cleSteamGridDB") private var gridKey = ""
 
     var body: some View {
+        @Bindable var library = library
+
         Form {
             Section {
                 Picker("Langue de Verger", selection: $language) {
@@ -249,6 +252,16 @@ private struct VergerSettings: View {
             } footer: {
                 Text("Verger se met à jour depuis ses versions publiées sur GitHub, séparément de Cidre : une mise à jour de l'interface ne retélécharge pas le moteur.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+            if !LibraryModel.discordApplicationID.isEmpty {
+                Section {
+                    Toggle("Afficher le jeu en cours sur Discord", isOn: $library.discordEnabled)
+                } header: {
+                    Text(verbatim: "Discord")
+                } footer: {
+                    Text("Tes amis voient le jeu auquel tu joues, tant que Verger et Discord sont ouverts. Verger le dit à l'application Discord de ce Mac ; il ne se connecte pas à ton compte.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Section {
                 SecureField("Clé d'API SteamGridDB", text: $gridKey)

@@ -90,6 +90,12 @@ public struct CidreCLI: Sendable {
         try await json(["info", id, "--json"])
     }
 
+    /// `cidre running --json` : les identifiants des jeux en cours, qu'ils aient
+    /// ete lances par Verger, par Steam ou au Terminal.
+    public func running() async throws -> [String] {
+        try await json(["running", "--json"])
+    }
+
     /// `cidre play <id>`. Rend la main quand la commande se termine : tout de
     /// suite pour un jeu lance par Steam, a la sortie du jeu sinon. La sortie
     /// de la commande va dans `log`.

@@ -140,6 +140,7 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
+          running) echo '["552500","local-x"]' ;;
           options) echo '{"options":{"tso":true,"vsync":false,"hud":true,"async":false,"fils_compilation":0,"eac_untrusted":false,"luajit":false,"plein_ecran":true,"gamemode":false,"overlay":true},"options_perso":{"vsync":false,"hud":true}}' ;;
           session) echo '{"compte":"joueur","connecte":false}' ;;
           logout) echo "logout" >> "$(dirname "$0")/reglages.txt" ;;
@@ -198,6 +199,9 @@ private let infoJSON = """
     #expect(defaults.options.overlay == true)
     try await cli.setOption(id: CidreCLI.defaultsID, .fullscreen, to: false)
     try await cli.resetOptions(id: CidreCLI.defaultsID, .vsync)
+
+    // jeux en cours
+    #expect(try await cli.running() == ["552500", "local-x"])
 
     // session Steam
     #expect(try await cli.session() == SteamSession(account: "joueur", connected: false))

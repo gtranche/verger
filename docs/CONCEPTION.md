@@ -25,6 +25,7 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Lister les jeux (plateforme, mode, installé ?) | `cidre list --json` |
 | Fiche d'un jeu (taille, chemin, options actives) | `cidre info <id> --json` |
 | Lancer un jeu | `cidre play <id>` |
+| Les jeux en cours (lancés par Verger, par Steam ou au Terminal) | `cidre running --json` |
 | Régler une option de lancement d'un jeu | `cidre set <id> <option> <valeur>` |
 | Ne plus forcer une option pour un jeu | `cidre unset <id> [option]` |
 | Réglages généraux (tous les jeux) | `cidre options --json`, `cidre set defaut …`, `cidre unset defaut …` |
@@ -162,6 +163,8 @@ Scripts/test.sh
 - **Réglages** (état de Cidre, compte Steam, options générales) et **mise à jour de Verger par GitHub**. **Fait.**
 - **Interface en français et en anglais**, **jaquettes au choix** (image locale ou SteamGridDB). **Fait.**
 - **Langue des jeux** : Verger affiche le sélecteur dès que Cidre connaît l'option `langue` (à faire côté Cidre).
+- **Jeux en cours** : Verger demande à Cidre ce qui tourne toutes les dix secondes (`cidre running`), donc un jeu lancé depuis Steam s'affiche « En cours » lui aussi. **Fait.**
+- **Jeu en cours sur Discord** : Verger l'annonce à l'application Discord du Mac par son socket local (`Verger/CidreBridge/DiscordPresence.swift`), au nom d'une application Discord dont l'identifiant est à renseigner (`builtInDiscordApplicationID` dans `LibraryModel`). Tant qu'il est vide, l'option n'apparaît pas dans les réglages. L'annonce dure tant que Verger et Discord sont ouverts.
 - **Phase 4 — polish** : saves, connexion par QR code, overlay Steam (à l'essai côté Cidre).
 
 ## Structure du dépôt

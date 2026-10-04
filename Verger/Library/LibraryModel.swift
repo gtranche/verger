@@ -40,7 +40,24 @@ final class LibraryModel {
     private(set) var state: State = .loading
     private(set) var games: [Game] = []
     /// Jeux dont `cidre play` n'a pas encore rendu la main.
-    private(set) var running: Set<String> = []
+    private var launched: Set<String> = []
+    /// Jeux que Cidre dit en cours (`cidre running`) : lances par Steam, par
+    /// Verger ou au Terminal.
+    private var reported: Set<String> = []
+    /// Les jeux en cours, d'ou qu'ils aient ete lances.
+    var running: Set<String> { launched.union(reported) }
+    /// Depuis quand chaque jeu en cours tourne (le moment ou Verger l'a vu).
+    private var runningSince: [String: Date] = [:]
+
+    /// Afficher le jeu en cours dans le profil Discord.
+    var discordEnabled = UserDefaults.standard.bool(forKey: "discord") {
+        didSet {
+            UserDefaults.standard.set(discordEnabled, forKey: "discord")
+            Task { await updateDiscord() }
+        }
+    }
+    private var discord: DiscordPresence?
+    private var discordShown: (id: String, at: Date)?
     var lastError: String?
     /// Une action vient d'echouer faute de session Steam : il faut ouvrir la connexion.
     var loginNeeded = false
@@ -137,17 +154,76 @@ final class LibraryModel {
 
     func play(_ game: Game) {
         guard let cli, !running.contains(game.id) else { return }
-        running.insert(game.id)
+        launched.insert(game.id)
         let log = Self.logsDirectory.appendingPathComponent("play-\(game.id).log")
         Task {
+            await refreshRunning()
             do {
                 try await cli.play(id: game.id, log: log)
             } catch {
                 lastError = error.localizedDescription
             }
-            running.remove(game.id)
+            // Un jeu du client Steam : `cidre play` rend la main tout de suite,
+            // et Steam met quelques secondes a le demarrer. On le garde « en
+            // cours » le temps que Cidre le voie tourner.
+            if game.source == .steam {
+                for _ in 0..<10 where !reported.contains(game.id) {
+                    try? await Task.sleep(for: .seconds(2))
+                    await refreshRunning()
+                }
+            }
+            launched.remove(game.id)
+            await refreshRunning()
             // Le jeu a tourne : sa date de dernier lancement a pu changer.
             await reload()
+        }
+    }
+
+    // MARK: Jeux en cours, et Discord
+
+    /// Demande a Cidre ce qui tourne, et met Discord a jour. Appelee toutes les
+    /// quelques secondes tant que la fenetre est ouverte.
+    func refreshRunning() async {
+        // un Cidre d'avant `cidre running` : on ne sait que ce qu'on a lance
+        if let ids = try? await cli?.running() { reported = Set(ids) }
+        let now = Date()
+        for id in running where runningSince[id] == nil { runningSince[id] = now }
+        runningSince = runningSince.filter { running.contains($0.key) }
+        await updateDiscord()
+    }
+
+    /// L'identifiant de l'application Discord au nom de laquelle Verger annonce
+    /// le jeu. Public par nature. Vide : la fonction n'est pas proposee.
+    static var discordApplicationID: String {
+        UserDefaults.standard.string(forKey: "discordApplicationID") ?? builtInDiscordApplicationID
+    }
+    private static let builtInDiscordApplicationID = ""
+
+    private func updateDiscord() async {
+        // le jeu a annoncer : le dernier demarre
+        let current = games
+            .filter { running.contains($0.id) }
+            .max { (runningSince[$0.id] ?? .distantPast) < (runningSince[$1.id] ?? .distantPast) }
+        guard discordEnabled, !Self.discordApplicationID.isEmpty, let game = current else {
+            if discordShown != nil {
+                await discord?.clear()
+                discordShown = nil
+            }
+            return
+        }
+        // Deja annonce : on le redit une fois par minute, pour retrouver un
+        // Discord qui aurait ete relance entre-temps.
+        if let shown = discordShown, shown.id == game.id, Date().timeIntervalSince(shown.at) < 60 { return }
+        if discord == nil { discord = DiscordPresence(applicationID: Self.discordApplicationID) }
+        let image = game.appid.flatMap {
+            URL(string: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/\($0)/header.jpg")
+        }
+        do {
+            try await discord?.show(.init(name: game.name, start: runningSince[game.id] ?? Date(), image: image))
+            discordShown = (game.id, Date())
+        } catch {
+            // Discord est ferme, ou refuse : on reessaiera au prochain tour.
+            discordShown = nil
         }
     }
 

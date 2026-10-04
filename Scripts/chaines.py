@@ -38,6 +38,7 @@ IGNORES = {
     "%@", "%lld", "dl %@", "brew install ", "steam guard code:", "two-factor code:",
     "confirm the login in the steam mobile app", "waiting for user info...ok", "invalid password",
     "rate limit exceeded", "two-factor code mismatch", "invalid login auth code", "fr_FR", "en_US",
+    "SET_ACTIVITY", "ERROR", "DISPATCH", "READY", "Discord", "discordApplicationID",
     "ongletReglages", "cleSteamGridDB", "cidrePath", "steamUser", "AppleLanguages", "langue",
 }
 

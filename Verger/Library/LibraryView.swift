@@ -83,8 +83,18 @@ struct LibraryView: View {
             } message: {
                 Text(library.lastError ?? "")
             }
+            // Ce qui tourne en ce moment, y compris lance depuis Steam.
+            .task {
+                while !Task.isCancelled {
+                    await library.refreshRunning()
+                    try? await Task.sleep(for: .seconds(10))
+                }
+            }
             .task {
                 await library.reload()
+                // sans attendre le prochain tour de la boucle ci-dessus, qui a
+                // demarre avant que Cidre ne soit localise
+                await library.refreshRunning()
                 // `Verger --jeu <id>` ouvre la fiche d'un jeu, `--connexion` la
                 // connexion a Steam, `--reglages` les reglages
                 let arguments = CommandLine.arguments
