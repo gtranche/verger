@@ -7,6 +7,7 @@ struct LibraryView: View {
     @Environment(LibraryModel.self) private var library
     @State private var selection: Game.ID?
     @State private var installingFromSteam = false
+    @State private var loggingIn = false
     /// Un installeur vient d'etre lance : le jeu a ajouter est sans doute sur C:.
     @State private var ranInstaller = false
 
@@ -32,6 +33,8 @@ struct LibraryView: View {
                         Divider()
                         Button("Ajouter un jeu non-Steam…") { addLocalGame() }
                         Button("Lancer un installeur Windows…") { runInstaller() }
+                        Divider()
+                        Button("Connexion à Steam…") { loggingIn = true }
                     } label: {
                         Label("Ajouter un jeu", systemImage: "plus")
                     }
@@ -55,6 +58,9 @@ struct LibraryView: View {
             .sheet(isPresented: $installingFromSteam) {
                 InstallSheet().environment(library)
             }
+            .sheet(isPresented: $loggingIn) {
+                LoginSheet().environment(library)
+            }
             .alert("Une erreur est survenue", isPresented: errorShown) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -68,6 +74,8 @@ struct LibraryView: View {
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
                     selection = arguments[flag + 1]
                 }
+                // `Verger --connexion` ouvre la fenetre de connexion a Steam
+                if arguments.contains("--connexion") { loggingIn = true }
             }
     }
 

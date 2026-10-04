@@ -206,10 +206,6 @@ private let infoJSON = """
     task.cancel()
     await #expect(throws: CancellationError.self) { try await task.value }
     #expect(Date().timeIntervalSince(started) < 10)
-
-    let login = try cli.writeLoginCommand(in: dir)
-    #expect(try String(contentsOf: login, encoding: .utf8).contains("' login"))
-    #expect(FileManager.default.isExecutableFile(atPath: login.path))
 }
 
 private final class Seen: @unchecked Sendable {

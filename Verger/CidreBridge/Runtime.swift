@@ -10,6 +10,8 @@ public struct RuntimeStatus: Decodable, Equatable, Sendable {
     /// Le prefixe Wine a ete cree (`cidre setup` est passe).
     public let prefixReady: Bool
     public let steamcmdPresent: Bool
+    /// Le compte que Cidre utiliserait : celui du client Steam, ou `CIDRE_STEAM_USER`.
+    public let steamAccount: String?
     /// Un jeu tourne par Cidre : pas le moment de mettre a jour.
     public let gameRunning: Bool
     public let prerequisites: Prerequisites
@@ -38,6 +40,7 @@ public struct RuntimeStatus: Decodable, Equatable, Sendable {
         case runtimePresent = "runtime"
         case prefixReady = "prefixe"
         case steamcmdPresent = "steamcmd"
+        case steamAccount = "compte_steam"
         case gameRunning = "jeu_en_cours"
         case prerequisites = "prerequis"
     }

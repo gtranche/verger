@@ -55,6 +55,15 @@ final class LibraryModel {
         didSet { UserDefaults.standard.set(cidrePath, forKey: "cidrePath") }
     }
 
+    /// Le compte Steam avec lequel l'utilisateur s'est connecte dans Verger.
+    /// Sans lui, Cidre prend celui que le client Steam a memorise.
+    var steamUser: String? = UserDefaults.standard.string(forKey: "steamUser") {
+        didSet {
+            UserDefaults.standard.set(steamUser, forKey: "steamUser")
+            cli?.steamUser = steamUser
+        }
+    }
+
     private(set) var cli: CidreCLI?
 
     var visibleGames: [Game] {
@@ -73,11 +82,12 @@ final class LibraryModel {
     // MARK: Bibliotheque
 
     func reload() async {
-        guard let cli = CidreCLI.locate(userChoice: cidrePath) else {
+        guard var cli = CidreCLI.locate(userChoice: cidrePath) else {
             self.cli = nil
             state = .cidreMissing
             return
         }
+        cli.steamUser = steamUser
         self.cli = cli
         if games.isEmpty { state = .loading }
         do {
@@ -243,16 +253,6 @@ final class LibraryModel {
     /// bibliotheque. On lui ouvre sa fenetre d'installation.
     func installNative(appid: Int) {
         if let url = URL(string: "steam://install/\(appid)") { NSWorkspace.shared.open(url) }
-    }
-
-    /// Ouvre un Terminal sur `cidre login` : le mot de passe est tape a SteamCMD.
-    func openSteamLogin() {
-        guard let cli else { return }
-        do {
-            NSWorkspace.shared.open(try cli.writeLoginCommand())
-        } catch {
-            lastError = error.localizedDescription
-        }
     }
 
     // MARK: Jeux hors Steam

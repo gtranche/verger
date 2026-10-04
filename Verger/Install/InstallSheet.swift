@@ -8,6 +8,7 @@ struct InstallSheet: View {
     @Environment(LibraryModel.self) private var library
     @Environment(\.dismiss) private var dismiss
     @State private var search = ""
+    @State private var loggingIn = false
 
     private var candidates: [OwnedGame] {
         library.owned.filter { game in
@@ -58,11 +59,12 @@ struct InstallSheet: View {
             ContentUnavailableView {
                 Label("Connexion Steam requise", systemImage: "person.badge.key")
             } description: {
-                Text("Connecte-toi une fois dans le Terminal. Ton mot de passe va à SteamCMD, jamais à Verger ; ensuite la session est mémorisée.")
+                Text("Connecte-toi une fois pour que Verger puisse lire ta bibliothèque et télécharger tes jeux. Ensuite la session est mémorisée.")
             } actions: {
-                Button("Ouvrir le Terminal") { library.openSteamLogin() }
-                Button("C'est fait, réessayer") { Task { await library.loadOwned(refresh: true) } }
+                Button("Se connecter à Steam…") { loggingIn = true }
+                    .buttonStyle(.borderedProminent)
             }
+            .sheet(isPresented: $loggingIn) { LoginSheet().environment(library) }
         case let .failed(message):
             ContentUnavailableView {
                 Label("Liste indisponible", systemImage: "exclamationmark.triangle")

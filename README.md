@@ -62,7 +62,7 @@ Le bouton **+** de la barre d'outils.
 
 **Un jeu Steam de ta bibliothèque.** Verger liste les jeux que possède ton compte (`cidre library`) et ne propose que ceux qui ne sont pas installés. La version Windows se télécharge dans le dossier Cidre (`cidre dl`), hors du client Steam, avec son avancement et un bouton d'arrêt ; un téléchargement arrêté reprend où il en était. Quand le jeu a une version macOS, c'est elle qui est proposée d'abord, et c'est Steam qui l'installe.
 
-La liste vient de la session SteamCMD mémorisée. S'il n'y en a pas, Verger ouvre un Terminal sur `cidre login` : le mot de passe est tapé à SteamCMD, jamais à Verger.
+La liste vient de la session SteamCMD mémorisée. S'il n'y en a pas, Verger ouvre sa fenêtre de connexion (voir « Connexion à Steam »).
 
 **Un jeu non-Steam.** « Ajouter un jeu non-Steam… » : tu choisis son `.exe`, il entre dans la bibliothèque et se lance par Cidre ; ses fichiers restent où ils sont. Si le jeu arrive sous forme d'installeur (GOG, itch…), « Lancer un installeur Windows… » l'exécute d'abord ; le sélecteur s'ouvre ensuite sur le disque C: du préfixe, là où il a déposé le jeu.
 
@@ -95,13 +95,12 @@ fils_compilation = 6
 
 Clés : `tso`, `vsync`, `hud`, `async`, `fils_compilation`, `eac_untrusted`, `luajit`. Cidre livre ses propres réglages par jeu (`outil-steam/profils.toml`) ; le fichier utilisateur les surcharge clé par clé, et la section d'un jeu l'emporte sur `[defaut]`. Format volontairement plat (sections + `cle = valeur`), pour rester lisible par un script `sh`.
 
-### 4. Login simple  ← demande explicite
-**Connexion par QR / appli Steam mobile**, pas de mot de passe tapé dans Verger, pas de terminal :
-1. Verger affiche un **QR code**.
-2. L'utilisateur le scanne avec l'appli Steam mobile et **approuve**.
-3. Verger récupère un **jeton de session** (mémorisé), zéro mot de passe stocké.
+### 4. Connexion à Steam
+Une fenêtre dans Verger, pas de Terminal (bouton **+**, « Connexion à Steam… », ou d'elle-même quand la session manque) : identifiant, mot de passe, puis ce que Steam Guard demande — valider dans l'appli mobile, ou taper un code.
 
-Moteur : **SteamKit2 / DepotDownloader** (supporte le login QR et le téléchargement de dépôt par OS). Pour la V1 on peut encapsuler SteamCMD (session mémorisée), mais la cible UX est le QR.
+Verger ne garde ni mot de passe ni jeton. Il prête un terminal à SteamCMD (`cidre login`), l'outil de Valve, lui relaie la saisie et l'oublie aussitôt ; c'est SteamCMD qui mémorise la session. La sortie brute de SteamCMD n'est jamais affichée ni journalisée, seulement la raison d'un refus (« mot de passe incorrect », « trop de tentatives »).
+
+**Cible : la connexion par QR code**, sans mot de passe du tout. SteamCMD ne sait pas la faire ; elle demande de le remplacer par un moteur bâti sur SteamKit (DepotDownloader) pour télécharger les jeux et lire la bibliothèque. À faire.
 
 > Pourquoi pas steamctl : `python-steam` renvoie « Invalid Password » sur l'ancien flux de login (déprécié par Steam). Abandonné.
 
@@ -114,7 +113,7 @@ Moteur : **SteamKit2 / DepotDownloader** (supporte le login QR et le télécharg
 
 - UI : SwiftUI
 - Logique : appels à la CLI `cidre` (Process), parsing JSON
-- Login : binaire DepotDownloader embarqué (self-contained .NET) ou bridge SteamKit
+- Login : fenêtre au-dessus de SteamCMD aujourd'hui ; cible QR avec DepotDownloader embarqué (self-contained .NET) ou bridge SteamKit
 - Stockage réglages : `profils.toml` partagé avec Cidre
 
 Alternative si on veut du cross-platform plus tard : Tauri (Rust + web, léger). Mais pour une cible mac-only, SwiftUI gagne.
@@ -138,7 +137,7 @@ Scripts/test.sh
 - **Phase 0 — plomberie** (côté Cidre) : `cidre list --json`, `cidre info --json`, `profils.toml`. **Fait.**
 - **Phase 1 — Verger lecture seule** : bibliothèque + bouton Jouer (`cidre play`) sur les jeux déjà installés, fiche du jeu avec ses options actives. **Fait.**
 - **Phase 2 — options par jeu** : panneau de réglages qui écrit `profils.toml` (`cidre set`). **Fait.**
-- **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec la session SteamCMD mémorisée ; le login QR reste à faire.
+- **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec une fenêtre de connexion au-dessus de SteamCMD ; le login QR reste à faire.
 - **Installation et mise à jour de Cidre par Verger** (`cidre status`, `cidre setup`). **Fait.**
 - **Phase 4 — polish** : saves, auto-update de Verger lui-même (séparé du runtime), prérequis Homebrew embarqués dans le runtime.
 
@@ -152,13 +151,14 @@ verger/
     Library/           # vue bibliothèque : grille, jaquettes, fiche du jeu
     GameSettings/      # options de lancement par jeu
     Install/           # installer un jeu Steam du compte
+    Login/             # fenêtre de connexion à Steam
     Runtime/           # installer et mettre à jour Cidre
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)
   Tests/               # tests du pont
   Scripts/             # bundle.sh (Verger.app), test.sh
 ```
 
-À venir : `Verger/Login/` et `Tools/` (DepotDownloader, pour le login QR).
+À venir : `Tools/` (DepotDownloader, pour le login QR).
 
 ---
 *Cidre est le moteur, Verger est la vitrine. Deux dépôts, un contrat (la CLI). On patche l'un sans retélécharger l'autre.*

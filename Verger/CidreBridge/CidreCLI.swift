@@ -5,7 +5,7 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
     case commandFailed(command: String, status: Int32, message: String)
     /// La sortie n'est pas le JSON attendu (CLI trop ancienne, sans `--json` ?).
     case invalidOutput(command: String, underlying: String)
-    /// SteamCMD n'a pas de session memorisee : il faut un `cidre login` au terminal.
+    /// SteamCMD n'a pas de session memorisee : il faut se connecter (`cidre login`).
     case steamSessionMissing
 
     public var errorDescription: String? {
@@ -16,7 +16,7 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
         case let .invalidOutput(command, underlying):
             return "Sortie de `cidre \(command)` illisible — Cidre est-il à jour ? (\(underlying))"
         case .steamSessionMissing:
-            return "La session Steam n'est pas mémorisée. Connecte-toi une fois dans le Terminal ; ton mot de passe va à SteamCMD, jamais à Verger."
+            return "La session Steam n'est pas mémorisée : connecte-toi (bouton +, « Connexion à Steam… »)."
         }
     }
 }
@@ -25,9 +25,20 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
 /// Verger ne reimplemente rien, il appelle ces commandes et lit leur JSON.
 public struct CidreCLI: Sendable {
     public let executable: URL
+    /// Le compte Steam a utiliser (`CIDRE_STEAM_USER`). Sans lui, Cidre prend
+    /// celui que le client Steam a memorise.
+    public var steamUser: String?
 
-    public init(executable: URL) {
+    public init(executable: URL, steamUser: String? = nil) {
         self.executable = executable
+        self.steamUser = steamUser
+    }
+
+    /// L'environnement des commandes lancees : celui de Verger, plus le compte Steam.
+    var environment: [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        if let steamUser, !steamUser.isEmpty { environment["CIDRE_STEAM_USER"] = steamUser }
+        return environment
     }
 
     // MARK: Detection
@@ -128,6 +139,7 @@ public struct CidreCLI: Sendable {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/script")
         process.arguments = ["-q", "/dev/null", "/bin/sh", executable.path, "dl", String(appid), platform]
+        process.environment = environment
         process.standardInput = FileHandle.nullDevice
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -166,16 +178,6 @@ public struct CidreCLI: Sendable {
             throw CidreError.commandFailed(
                 command: "dl \(appid)", status: process.terminationStatus, message: tail.lastLines(4))
         }
-    }
-
-    /// Un fichier `.command` qui lance `cidre login` : a ouvrir dans le Terminal
-    /// pour que l'utilisateur tape son mot de passe a SteamCMD, pas a Verger.
-    public func writeLoginCommand(in directory: URL = FileManager.default.temporaryDirectory) throws -> URL {
-        let url = directory.appendingPathComponent("Connexion Steam (Cidre).command")
-        let quoted = "'" + executable.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
-        try "#!/bin/sh\nexec /bin/sh \(quoted) login\n".write(to: url, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
-        return url
     }
 
     // MARK: Hors Steam
@@ -246,6 +248,7 @@ public struct CidreCLI: Sendable {
     /// stdout et stderr ; avec, les redirige tous deux vers ce fichier.
     func run(_ arguments: [String], output: URL? = nil) async throws -> RunResult {
         let executable = executable
+        let environment = environment
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 do {
@@ -254,6 +257,7 @@ public struct CidreCLI: Sendable {
                     // dependre de son bit d'execution.
                     process.executableURL = URL(fileURLWithPath: "/bin/sh")
                     process.arguments = [executable.path] + arguments
+                    process.environment = environment
                     process.standardInput = FileHandle.nullDevice
 
                     if let output {
