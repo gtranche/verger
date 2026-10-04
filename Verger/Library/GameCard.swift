@@ -6,6 +6,9 @@ struct GameCard: View {
     let game: Game
     let isRunning: Bool
     let isSelected: Bool
+    /// Telechargement en cours pour ce jeu, s'il y en a un.
+    var download: DownloadProgress?
+    var cancelDownload: () -> Void = {}
     let play: () -> Void
 
     @State private var hovering = false
@@ -39,7 +42,12 @@ struct GameCard: View {
 
     @ViewBuilder
     private var playOverlay: some View {
-        if isRunning {
+        if let download {
+            DownloadStatus(progress: download, cancel: cancelDownload)
+                .padding(10)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(8)
+        } else if isRunning {
             Label("En cours…", systemImage: "hourglass")
                 .font(.callout.weight(.semibold))
                 .padding(.horizontal, 12)
@@ -82,12 +90,13 @@ struct PlatformBadge: View {
     }
 
     private var label: String {
-        if !game.installed { return "Absent" }
+        // dossier Cidre sans installation complete : un telechargement interrompu
+        if !game.installed { return game.source == .cidre ? "Incomplet" : "Absent" }
         return game.launch == .native ? "Natif" : "Cidre"
     }
 
     private var tint: Color {
-        if !game.installed { return .secondary }
+        if !game.installed { return game.source == .cidre ? .orange : .secondary }
         return game.launch == .native ? .blue : .green
     }
 }

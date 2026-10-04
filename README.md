@@ -21,11 +21,18 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Besoin UI | Commande Cidre |
 |---|---|
 | Lister les jeux (plateforme, mode, installé ?) | `cidre list --json` |
-| Fiche d'un jeu (taille, chemin, options actives) | `cidre info <appid> --json` |
+| Fiche d'un jeu (taille, chemin, options actives) | `cidre info <id> --json` |
+| Lancer un jeu | `cidre play <id>` |
+| Les jeux Steam du compte, installés ou non | `cidre library --json [--refresh]` |
 | Télécharger un jeu Windows hors client | `cidre dl <appid> [windows\|macos]` |
-| Lancer un jeu | `cidre play <appid>` |
+| Mémoriser la session Steam (au Terminal) | `cidre login` |
+| Ajouter un jeu non-Steam | `cidre add <jeu.exe> [nom] --json` |
+| Lancer un installeur Windows | `cidre run <fichier.exe>` |
+| Où l'installeur a déposé le jeu | `cidre prefix` |
+| Retirer un jeu non-Steam / désinstaller un jeu du dossier Cidre | `cidre rm <id>` |
 | Sauvegardes (iCloud) | `cidre sync <appid\|all> [backup\|restore]` |
-| (futur) Désinstaller | `cidre rm <appid>` |
+
+Un jeu a un `id` : son appid Steam, ou `local-…` pour un jeu non-Steam.
 
 Verger parse ce JSON (`Verger/CidreBridge`) ; il ne scrape jamais la sortie texte. Une valeur qu'il ne connaît pas (CLI plus récente) retombe sur une valeur neutre au lieu de faire tomber la bibliothèque.
 
@@ -36,7 +43,18 @@ Verger cherche la commande `cidre` dans cet ordre : le chemin choisi dans l'app,
 ### 1. Bibliothèque (le verger)
 Grille des jeux possédés / installés, avec pour chacun : jaquette, plateforme (**natif** vs **Cidre/Windows**), état (installé / à télécharger / MAJ dispo), taille, dernier lancement. Bouton **Installer** (`cidre dl`) et **Jouer** (`cidre play`).
 
-### 2. Options de lancement par jeu  ← demande explicite
+### 2. Installer un jeu
+Le bouton **+** de la barre d'outils.
+
+**Un jeu Steam de ta bibliothèque.** Verger liste les jeux que possède ton compte (`cidre library`) et ne propose que ceux qui ne sont pas installés. La version Windows se télécharge dans le dossier Cidre (`cidre dl`), hors du client Steam, avec son avancement et un bouton d'arrêt ; un téléchargement arrêté reprend où il en était. Quand le jeu a une version macOS, c'est elle qui est proposée d'abord, et c'est Steam qui l'installe.
+
+La liste vient de la session SteamCMD mémorisée. S'il n'y en a pas, Verger ouvre un Terminal sur `cidre login` : le mot de passe est tapé à SteamCMD, jamais à Verger.
+
+**Un jeu non-Steam.** « Ajouter un jeu non-Steam… » : tu choisis son `.exe`, il entre dans la bibliothèque et se lance par Cidre ; ses fichiers restent où ils sont. Si le jeu arrive sous forme d'installeur (GOG, itch…), « Lancer un installeur Windows… » l'exécute d'abord ; le sélecteur s'ouvre ensuite sur le disque C: du préfixe, là où il a déposé le jeu.
+
+**Désinstaller.** Depuis la fiche du jeu : un jeu non-Steam est retiré de la bibliothèque (fichiers intacts), un jeu du dossier Cidre est supprimé du disque après confirmation. Un jeu du client Steam se désinstalle depuis Steam.
+
+### 3. Options de lancement par jeu  ← demande explicite
 Un panneau de réglages **par jeu**, avec des interrupteurs pour **activer/désactiver des fonctionnalités**. Chaque interrupteur mappe une variable que `cidre play` lit déjà :
 
 | Réglage UI | Variable / arg Cidre | Effet |
@@ -61,7 +79,7 @@ fils_compilation = 6
 
 Clés : `tso`, `vsync`, `hud`, `async`, `fils_compilation`, `eac_untrusted`, `luajit`. Cidre livre ses propres réglages par jeu (`outil-steam/profils.toml`) ; le fichier utilisateur les surcharge clé par clé, et la section d'un jeu l'emporte sur `[defaut]`. Format volontairement plat (sections + `cle = valeur`), pour rester lisible par un script `sh`.
 
-### 3. Login simple  ← demande explicite
+### 4. Login simple  ← demande explicite
 **Connexion par QR / appli Steam mobile**, pas de mot de passe tapé dans Verger, pas de terminal :
 1. Verger affiche un **QR code**.
 2. L'utilisateur le scanne avec l'appli Steam mobile et **approuve**.
@@ -71,7 +89,7 @@ Moteur : **SteamKit2 / DepotDownloader** (supporte le login QR et le télécharg
 
 > Pourquoi pas steamctl : `python-steam` renvoie « Invalid Password » sur l'ancien flux de login (déprécié par Steam). Abandonné.
 
-### 4. Sauvegardes
+### 5. Sauvegardes
 État de synchro par jeu + bouton backup/restore (`cidre sync`), au-dessus de notre sync iCloud (Steam Cloud ne résout pas les roots Windows sur mac).
 
 ## Stack technique recommandée
@@ -104,7 +122,7 @@ Scripts/test.sh
 - **Phase 0 — plomberie** (côté Cidre) : `cidre list --json`, `cidre info --json`, `profils.toml`. **Fait.**
 - **Phase 1 — Verger lecture seule** : bibliothèque + bouton Jouer (`cidre play`) sur les jeux déjà installés, fiche du jeu avec ses options actives. **Fait.**
 - **Phase 2 — options par jeu** : panneau de réglages qui écrit `profils.toml`.
-- **Phase 3 — install + login QR** : bouton Installer (`cidre dl`) derrière le login QR.
+- **Phase 3 — installer** : jeux Steam du compte (`cidre library`, `cidre dl`) et jeux non-Steam (`cidre add`, `cidre run`), désinstallation (`cidre rm`). **Fait**, avec la session SteamCMD mémorisée ; le login QR reste à faire.
 - **Phase 4 — polish** : saves, MAJ, détection auto de Cidre + auto-update de Verger (séparé du runtime).
 
 ## Structure du dépôt
@@ -115,12 +133,13 @@ verger/
   Verger/
     VergerApp.swift
     Library/           # vue bibliothèque : grille, jaquettes, fiche du jeu
+    Install/           # installer un jeu Steam du compte
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)
   Tests/               # tests du pont
   Scripts/             # bundle.sh (Verger.app), test.sh
 ```
 
-À venir : `Verger/GameSettings/` (Phase 2), `Verger/Login/` et `Tools/` (DepotDownloader, Phase 3).
+À venir : `Verger/GameSettings/` (Phase 2), `Verger/Login/` et `Tools/` (DepotDownloader, pour le login QR).
 
 ---
 *Cidre est le moteur, Verger est la vitrine. Deux dépôts, un contrat (la CLI). On patche l'un sans retélécharger l'autre.*

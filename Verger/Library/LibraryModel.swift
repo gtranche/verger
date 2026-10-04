@@ -1,9 +1,10 @@
+import AppKit
 import CidreBridge
 import Foundation
 import Observation
 
-/// L'etat de la bibliotheque : la liste que rend `cidre list --json`, et les
-/// jeux en cours de lancement.
+/// L'etat de la bibliotheque : la liste que rend `cidre list --json`, les jeux
+/// en cours de lancement, et les telechargements.
 @MainActor
 @Observable
 final class LibraryModel {
@@ -20,13 +21,27 @@ final class LibraryModel {
         var id: Self { self }
     }
 
+    /// Les jeux que possede le compte Steam (`cidre library --json`).
+    enum OwnedState: Equatable {
+        case idle, loading, loaded
+        /// SteamCMD n'a pas de session : il faut un `cidre login` au Terminal.
+        case sessionMissing
+        case failed(String)
+    }
+
     private(set) var state: State = .loading
     private(set) var games: [Game] = []
     /// Jeux dont `cidre play` n'a pas encore rendu la main.
-    private(set) var running: Set<Int> = []
+    private(set) var running: Set<String> = []
     var lastError: String?
     var filter: Filter = .all
     var search = ""
+
+    private(set) var ownedState: OwnedState = .idle
+    private(set) var owned: [OwnedGame] = []
+    /// Telechargements en cours, par appid.
+    private(set) var downloads: [Int: DownloadProgress] = [:]
+    private var downloadTasks: [Int: Task<Void, Never>] = [:]
 
     /// Chemin de la CLI choisi a la main (sinon detection automatique).
     var cidrePath: String? = UserDefaults.standard.string(forKey: "cidrePath") {
@@ -47,6 +62,8 @@ final class LibraryModel {
             .filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
+
+    // MARK: Bibliotheque
 
     func reload() async {
         guard let cli = CidreCLI.locate(userChoice: cidrePath) else {
@@ -70,23 +87,136 @@ final class LibraryModel {
     }
 
     func info(for game: Game) async throws -> GameInfo? {
-        try await cli?.info(appid: game.appid)
+        try await cli?.info(id: game.id)
     }
 
     func play(_ game: Game) {
-        guard let cli, !running.contains(game.appid) else { return }
-        running.insert(game.appid)
-        let log = Self.logsDirectory.appendingPathComponent("play-\(game.appid).log")
+        guard let cli, !running.contains(game.id) else { return }
+        running.insert(game.id)
+        let log = Self.logsDirectory.appendingPathComponent("play-\(game.id).log")
         Task {
             do {
-                try await cli.play(appid: game.appid, log: log)
+                try await cli.play(id: game.id, log: log)
             } catch {
                 lastError = error.localizedDescription
             }
-            running.remove(game.appid)
+            running.remove(game.id)
             // Le jeu a tourne : sa date de dernier lancement a pu changer.
             await reload()
         }
+    }
+
+    /// Retire un jeu hors Steam, ou desinstalle un jeu du dossier Cidre.
+    func remove(_ game: Game) async {
+        guard let cli else { return }
+        do {
+            try await cli.remove(id: game.id)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        await reload()
+        if ownedState == .loaded { await loadOwned() }
+    }
+
+    // MARK: Jeux Steam du compte
+
+    func loadOwned(refresh: Bool = false) async {
+        guard let cli else { return }
+        if owned.isEmpty || refresh { ownedState = .loading }
+        do {
+            owned = try await cli.library(refresh: refresh)
+            ownedState = .loaded
+        } catch CidreError.steamSessionMissing {
+            ownedState = .sessionMissing
+        } catch {
+            ownedState = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Telecharge la version Windows dans le dossier Cidre (`cidre dl`).
+    func download(appid: Int) {
+        guard let cli, downloadTasks[appid] == nil else { return }
+        downloads[appid] = DownloadProgress()
+        downloadTasks[appid] = Task {
+            do {
+                try await cli.download(appid: appid) { progress in
+                    Task { @MainActor in
+                        // un avancement arrive apres la fin ne doit pas la ressusciter
+                        if self.downloads[appid] != nil { self.downloads[appid] = progress }
+                    }
+                }
+            } catch is CancellationError {
+                // arrete par l'utilisateur : SteamCMD reprendra ou il en etait
+            } catch CidreError.steamSessionMissing {
+                ownedState = .sessionMissing
+                lastError = CidreError.steamSessionMissing.localizedDescription
+            } catch {
+                lastError = error.localizedDescription
+            }
+            downloads[appid] = nil
+            downloadTasks[appid] = nil
+            await reload()
+            if ownedState == .loaded { await loadOwned() }
+        }
+        // le dossier du jeu apparait des le debut : on le montre dans la grille
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            await reload()
+        }
+    }
+
+    func cancelDownload(appid: Int) {
+        downloadTasks[appid]?.cancel()
+    }
+
+    /// Version macOS : c'est le client Steam qui l'installe, dans sa propre
+    /// bibliotheque. On lui ouvre sa fenetre d'installation.
+    func installNative(appid: Int) {
+        if let url = URL(string: "steam://install/\(appid)") { NSWorkspace.shared.open(url) }
+    }
+
+    /// Ouvre un Terminal sur `cidre login` : le mot de passe est tape a SteamCMD.
+    func openSteamLogin() {
+        guard let cli else { return }
+        do {
+            NSWorkspace.shared.open(try cli.writeLoginCommand())
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    // MARK: Jeux hors Steam
+
+    /// Ajoute un .exe a la bibliotheque (`cidre add`) ; rend le jeu cree.
+    @discardableResult
+    func addLocalGame(executable: URL) async -> Game? {
+        guard let cli else { return nil }
+        do {
+            let game = try await cli.add(executable: executable)
+            await reload()
+            return game
+        } catch {
+            lastError = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Lance un installeur Windows par la pile Cidre (`cidre run`), sans l'ajouter.
+    func runInstaller(_ executable: URL) {
+        guard let cli else { return }
+        let log = Self.logsDirectory.appendingPathComponent("run-\(executable.deletingPathExtension().lastPathComponent).log")
+        Task {
+            do {
+                try await cli.runExecutable(executable, log: log)
+            } catch {
+                lastError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Le disque C: du prefixe : la ou un installeur a depose son jeu.
+    func prefixDirectory() async -> URL? {
+        try? await cli?.prefix()
     }
 
     static let logsDirectory = FileManager.default.homeDirectoryForCurrentUser

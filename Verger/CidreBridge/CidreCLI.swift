@@ -1,10 +1,12 @@
 import Foundation
 
-public enum CidreError: Error, LocalizedError, Sendable {
+public enum CidreError: Error, LocalizedError, Sendable, Equatable {
     /// La commande a rendu un code non nul ; `message` porte sa sortie d'erreur.
     case commandFailed(command: String, status: Int32, message: String)
     /// La sortie n'est pas le JSON attendu (CLI trop ancienne, sans `--json` ?).
     case invalidOutput(command: String, underlying: String)
+    /// SteamCMD n'a pas de session memorisee : il faut un `cidre login` au terminal.
+    case steamSessionMissing
 
     public var errorDescription: String? {
         switch self {
@@ -13,6 +15,8 @@ public enum CidreError: Error, LocalizedError, Sendable {
             return "`cidre \(command)` a échoué (code \(status))" + (detail.isEmpty ? "." : " : \(detail)")
         case let .invalidOutput(command, underlying):
             return "Sortie de `cidre \(command)` illisible — Cidre est-il à jour ? (\(underlying))"
+        case .steamSessionMissing:
+            return "La session Steam n'est pas mémorisée. Connecte-toi une fois dans le Terminal ; ton mot de passe va à SteamCMD, jamais à Verger."
         }
     }
 }
@@ -62,44 +66,154 @@ public struct CidreCLI: Sendable {
         return nil
     }
 
-    // MARK: Commandes
+    // MARK: Bibliotheque
 
     /// `cidre list --json`
     public func list() async throws -> [Game] {
         try await json(["list", "--json"])
     }
 
-    /// `cidre info <appid> --json`
-    public func info(appid: Int) async throws -> GameInfo {
-        try await json(["info", String(appid), "--json"])
+    /// `cidre info <id> --json`
+    public func info(id: String) async throws -> GameInfo {
+        try await json(["info", id, "--json"])
     }
 
-    /// `cidre play <appid>`. Rend la main quand la commande se termine : tout de
-    /// suite pour un jeu lance par Steam, a la sortie du jeu pour un jeu du
-    /// dossier Cidre. La sortie de la commande va dans `log`.
-    public func play(appid: Int, log: URL? = nil) async throws {
-        let result = try await run(["play", String(appid)], output: log)
-        guard result.status == 0 else {
-            throw CidreError.commandFailed(
-                command: "play \(appid)", status: result.status,
-                message: log.map { "voir \($0.path)" } ?? "")
+    /// `cidre play <id>`. Rend la main quand la commande se termine : tout de
+    /// suite pour un jeu lance par Steam, a la sortie du jeu sinon. La sortie
+    /// de la commande va dans `log`.
+    public func play(id: String, log: URL? = nil) async throws {
+        try await runLogged(["play", id], log: log)
+    }
+
+    // MARK: Steam
+
+    /// `cidre library --json` : les jeux que possede le compte, installes ou non.
+    /// `refresh` redemande les licences a Steam au lieu de lire le cache.
+    public func library(refresh: Bool = false) async throws -> [OwnedGame] {
+        do {
+            return try await json(["library", "--json"] + (refresh ? ["--refresh"] : []))
+        } catch let CidreError.commandFailed(_, status, _) where status == 3 {
+            throw CidreError.steamSessionMissing
         }
+    }
+
+    /// `cidre dl <appid> <platform>` : telecharge le jeu dans le dossier Cidre,
+    /// en rapportant l'avancement. Annuler la tache arrete le telechargement
+    /// (SteamCMD le reprendra ou il en etait).
+    public func download(
+        appid: Int, platform: String = "windows",
+        onProgress: @escaping @Sendable (DownloadProgress) -> Void
+    ) async throws {
+        // SteamCMD ne rend sa sortie ligne a ligne que sur un terminal : on lui
+        // en prete un par `script`, sinon l'avancement arrive par blocs de 4 Kio.
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/script")
+        process.arguments = ["-q", "/dev/null", "/bin/sh", executable.path, "dl", String(appid), platform]
+        process.standardInput = FileHandle.nullDevice
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        let tail = TextTail()
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty else {
+                handle.readabilityHandler = nil
+                return
+            }
+            let chunk = String(decoding: data, as: UTF8.self)
+            tail.append(chunk)
+            if let progress = DownloadProgress.last(in: chunk) { onProgress(progress) }
+            // Sans session memorisee, SteamCMD attendrait un mot de passe que
+            // personne ne tapera : on arrete, et on le dit.
+            if chunk.range(of: "password:", options: .caseInsensitive) != nil {
+                tail.markPasswordPrompt()
+                process.terminate()
+            }
+        }
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                process.terminationHandler = { _ in continuation.resume() }
+                do { try process.run() } catch { continuation.resume(throwing: error) }
+            }
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+
+        if tail.sawPasswordPrompt { throw CidreError.steamSessionMissing }
+        try Task.checkCancellation()
+        guard process.terminationStatus == 0 else {
+            throw CidreError.commandFailed(
+                command: "dl \(appid)", status: process.terminationStatus, message: tail.lastLines(4))
+        }
+    }
+
+    /// Un fichier `.command` qui lance `cidre login` : a ouvrir dans le Terminal
+    /// pour que l'utilisateur tape son mot de passe a SteamCMD, pas a Verger.
+    public func writeLoginCommand(in directory: URL = FileManager.default.temporaryDirectory) throws -> URL {
+        let url = directory.appendingPathComponent("Connexion Steam (Cidre).command")
+        let quoted = "'" + executable.path.replacingOccurrences(of: "'", with: "'\\''") + "'"
+        try "#!/bin/sh\nexec /bin/sh \(quoted) login\n".write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        return url
+    }
+
+    // MARK: Hors Steam
+
+    /// `cidre add <exe> [nom] --json` : ajoute un jeu Windows a la bibliotheque.
+    public func add(executable exe: URL, name: String? = nil) async throws -> Game {
+        var arguments = ["add", exe.path]
+        if let name, !name.isEmpty { arguments.append(name) }
+        return try await json(arguments + ["--json"])
+    }
+
+    /// `cidre run <exe>` : lance un .exe une fois (un installeur), sans l'ajouter.
+    public func runExecutable(_ exe: URL, log: URL? = nil) async throws {
+        try await runLogged(["run", exe.path], log: log)
+    }
+
+    /// `cidre prefix` : le disque C: du prefixe, la ou les installeurs deposent les jeux.
+    public func prefix() async throws -> URL {
+        let result = try await checked(["prefix"])
+        let path = String(decoding: result.stdout, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return URL(fileURLWithPath: path, isDirectory: true)
+    }
+
+    /// `cidre rm <id>` : retire un jeu hors Steam (ses fichiers restent), ou
+    /// desinstalle un jeu du dossier Cidre (ses fichiers sont supprimes).
+    public func remove(id: String) async throws {
+        _ = try await checked(["rm", id])
     }
 
     // MARK: Plomberie
 
     func json<T: Decodable>(_ arguments: [String]) async throws -> T {
-        let command = arguments.joined(separator: " ")
-        let result = try await run(arguments)
-        guard result.status == 0 else {
-            throw CidreError.commandFailed(
-                command: command, status: result.status,
-                message: String(decoding: result.stderr, as: UTF8.self))
-        }
+        let result = try await checked(arguments)
         do {
             return try JSONDecoder().decode(T.self, from: result.stdout)
         } catch {
-            throw CidreError.invalidOutput(command: command, underlying: "\(error)")
+            throw CidreError.invalidOutput(command: arguments.joined(separator: " "), underlying: "\(error)")
+        }
+    }
+
+    /// Lance la commande et exige un code de retour nul.
+    func checked(_ arguments: [String]) async throws -> RunResult {
+        let result = try await run(arguments)
+        guard result.status == 0 else {
+            throw CidreError.commandFailed(
+                command: arguments.joined(separator: " "), status: result.status,
+                message: String(decoding: result.stderr, as: UTF8.self))
+        }
+        return result
+    }
+
+    func runLogged(_ arguments: [String], log: URL?) async throws {
+        let result = try await run(arguments, output: log)
+        guard result.status == 0 else {
+            throw CidreError.commandFailed(
+                command: arguments.joined(separator: " "), status: result.status,
+                message: log.map { "voir \($0.path)" } ?? "")
         }
     }
 
@@ -168,4 +282,28 @@ private final class DataBox: @unchecked Sendable {
 
     func set(_ value: Data) { lock.lock(); data = value; lock.unlock() }
     func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
+}
+
+/// La fin de la sortie d'une commande longue, pour l'afficher si elle echoue.
+private final class TextTail: @unchecked Sendable {
+    private let lock = NSLock()
+    private var text = ""
+    private var passwordPrompt = false
+
+    func append(_ chunk: String) {
+        lock.lock(); defer { lock.unlock() }
+        text = String((text + chunk).suffix(4000))
+    }
+
+    func markPasswordPrompt() { lock.lock(); passwordPrompt = true; lock.unlock() }
+    var sawPasswordPrompt: Bool { lock.lock(); defer { lock.unlock() }; return passwordPrompt }
+
+    func lastLines(_ count: Int) -> String {
+        lock.lock(); defer { lock.unlock() }
+        return text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .suffix(count)
+            .joined(separator: "\n")
+    }
 }

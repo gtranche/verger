@@ -10,13 +10,24 @@ struct GameDetail: View {
 
     @State private var info: GameInfo?
     @State private var error: String?
+    @State private var confirmingUninstall = false
+
+    private var sourceLabel: String {
+        switch game.source {
+        case .steam: "Client Steam"
+        case .cidre: "Dossier Cidre"
+        case .local: "Hors Steam"
+        }
+    }
 
     var body: some View {
         Form {
             Section {
                 LabeledContent("Plateforme") { PlatformBadge(game: game) }
-                LabeledContent("Source", value: game.source == .cidre ? "Dossier Cidre" : "Client Steam")
-                LabeledContent("Taille", value: game.sizeBytes.formatted(.byteCount(style: .file)))
+                LabeledContent("Source", value: sourceLabel)
+                if game.sizeBytes > 0 {
+                    LabeledContent("Taille", value: game.sizeBytes.formatted(.byteCount(style: .file)))
+                }
                 LabeledContent("Dernier lancement") {
                     if let date = game.lastPlayed {
                         Text(date, format: .relative(presentation: .named))
@@ -24,7 +35,9 @@ struct GameDetail: View {
                         Text("Jamais").foregroundStyle(.secondary)
                     }
                 }
-                LabeledContent("AppID", value: String(game.appid))
+                if let appid = game.appid {
+                    LabeledContent("AppID", value: String(appid))
+                }
                 if let info {
                     LabeledContent("Sauvegardes iCloud", value: info.savesSynced ? "Synchronisées" : "Non configurées")
                 }
@@ -56,24 +69,61 @@ struct GameDetail: View {
             }
 
             Section {
-                Button {
-                    library.play(game)
-                } label: {
-                    Label(library.running.contains(game.appid) ? "En cours…" : "Jouer", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
+                if let appid = game.appid, let progress = library.downloads[appid] {
+                    DownloadStatus(progress: progress) { library.cancelDownload(appid: appid) }
+                } else if let appid = game.appid, game.source == .cidre, !game.installed {
+                    Button {
+                        library.download(appid: appid)
+                    } label: {
+                        Label("Reprendre le téléchargement", systemImage: "arrow.down.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                } else {
+                    Button {
+                        library.play(game)
+                    } label: {
+                        Label(library.running.contains(game.id) ? "En cours…" : "Jouer", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!game.installed || library.running.contains(game.id))
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!game.installed || library.running.contains(game.appid))
 
                 Button("Afficher dans le Finder") {
                     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: game.path)
                 }
                 .frame(maxWidth: .infinity)
+
+                switch game.source {
+                case .local:
+                    Button("Retirer de la bibliothèque") {
+                        Task { await library.remove(game) }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .help("Le jeu quitte Verger ; ses fichiers ne sont pas touchés.")
+                case .cidre:
+                    Button("Désinstaller…", role: .destructive) { confirmingUninstall = true }
+                        .frame(maxWidth: .infinity)
+                        .disabled(game.appid.map { library.downloads[$0] != nil } ?? false)
+                case .steam:
+                    EmptyView()
+                }
             }
         }
         .formStyle(.grouped)
-        .task(id: game.appid) {
+        .confirmationDialog(
+            "Désinstaller \(game.name) ?", isPresented: $confirmingUninstall
+        ) {
+            Button("Désinstaller", role: .destructive) {
+                Task { await library.remove(game) }
+            }
+        } message: {
+            Text("Ses fichiers (\(game.sizeBytes.formatted(.byteCount(style: .file)))) seront supprimés du disque. Tu pourras le réinstaller depuis tes jeux Steam.")
+        }
+        .task(id: game.id) {
             info = nil
             error = nil
             do {

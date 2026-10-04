@@ -6,7 +6,9 @@ import UniformTypeIdentifiers
 struct LibraryView: View {
     @Environment(LibraryModel.self) private var library
     @State private var selection: Game.ID?
-    @State private var choosingCidre = false
+    @State private var installingFromSteam = false
+    /// Un installeur vient d'etre lance : le jeu a ajouter est sans doute sur C:.
+    @State private var ranInstaller = false
 
     private let columns = [GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 20)]
 
@@ -25,6 +27,17 @@ struct LibraryView: View {
                     .pickerStyle(.segmented)
                 }
                 ToolbarItem {
+                    Menu {
+                        Button("Installer un jeu Steam…") { installingFromSteam = true }
+                        Divider()
+                        Button("Ajouter un jeu non-Steam…") { addLocalGame() }
+                        Button("Lancer un installeur Windows…") { runInstaller() }
+                    } label: {
+                        Label("Ajouter un jeu", systemImage: "plus")
+                    }
+                    .disabled(library.cli == nil)
+                }
+                ToolbarItem {
                     Button {
                         Task { await library.reload() }
                     } label: {
@@ -39,15 +52,13 @@ struct LibraryView: View {
                         .inspectorColumnWidth(min: 260, ideal: 300, max: 380)
                 }
             }
-            .alert("Lancement impossible", isPresented: errorShown) {
+            .sheet(isPresented: $installingFromSteam) {
+                InstallSheet().environment(library)
+            }
+            .alert("Une erreur est survenue", isPresented: errorShown) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(library.lastError ?? "")
-            }
-            .fileImporter(isPresented: $choosingCidre, allowedContentTypes: [.item]) { result in
-                if case let .success(url) = result {
-                    Task { await library.useCidre(at: url) }
-                }
             }
             .task { await library.reload() }
     }
@@ -64,7 +75,7 @@ struct LibraryView: View {
             } description: {
                 Text("Verger pilote Cidre mais ne le contient pas. Installe Cidre, ou indique où se trouve sa commande `cidre`.")
             } actions: {
-                Button("Choisir la commande cidre…") { choosingCidre = true }
+                Button("Choisir la commande cidre…") { chooseCidre() }
                 Link("Installer Cidre", destination: URL(string: "https://github.com/gtranche/cidre/releases/latest")!)
             }
         case let .failed(message):
@@ -74,13 +85,18 @@ struct LibraryView: View {
                 Text(message)
             } actions: {
                 Button("Réessayer") { Task { await library.reload() } }
-                Button("Choisir la commande cidre…") { choosingCidre = true }
+                Button("Choisir la commande cidre…") { chooseCidre() }
             }
         case .loaded:
             if library.visibleGames.isEmpty {
-                ContentUnavailableView(
-                    library.games.isEmpty ? "Aucun jeu installé" : "Aucun jeu ne correspond",
-                    systemImage: "leaf")
+                ContentUnavailableView {
+                    Label(library.games.isEmpty ? "Aucun jeu installé" : "Aucun jeu ne correspond", systemImage: "leaf")
+                } actions: {
+                    if library.games.isEmpty {
+                        Button("Installer un jeu Steam…") { installingFromSteam = true }
+                        Button("Ajouter un jeu non-Steam…") { addLocalGame() }
+                    }
+                }
             } else {
                 grid
             }
@@ -98,18 +114,68 @@ struct LibraryView: View {
                     } label: {
                         GameCard(
                             game: game,
-                            isRunning: library.running.contains(game.appid),
+                            isRunning: library.running.contains(game.id),
                             isSelected: selection == game.id,
+                            download: game.appid.flatMap { library.downloads[$0] },
+                            cancelDownload: { game.appid.map(library.cancelDownload) },
                             play: { library.play(game) }
                         )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(game.name)
-                    .simultaneousGesture(TapGesture(count: 2).onEnded { library.play(game) })
+                    .simultaneousGesture(TapGesture(count: 2).onEnded {
+                        if game.installed { library.play(game) }
+                    })
                 }
             }
             .padding(24)
         }
+    }
+
+    // MARK: Choix de fichiers
+
+    private func chooseFile(title: String, message: String, types: [UTType], directory: URL? = nil) -> URL? {
+        let panel = NSOpenPanel()
+        panel.title = title
+        panel.message = message
+        panel.prompt = "Choisir"
+        panel.allowedContentTypes = types
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.treatsFilePackagesAsDirectories = true
+        if let directory { panel.directoryURL = directory }
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    private func chooseCidre() {
+        guard let url = chooseFile(
+            title: "Commande cidre", message: "Choisis la commande `cidre` de ton installation de Cidre.",
+            types: [.item]) else { return }
+        Task { await library.useCidre(at: url) }
+    }
+
+    private func addLocalGame() {
+        Task {
+            // Apres un installeur, le jeu est sur le disque C: du prefixe.
+            let directory = ranInstaller ? await library.prefixDirectory() : nil
+            guard let url = chooseFile(
+                title: "Ajouter un jeu non-Steam",
+                message: "Choisis l'exécutable (.exe) du jeu. Ses fichiers restent où ils sont.",
+                types: [.exe], directory: directory) else { return }
+            if let game = await library.addLocalGame(executable: url) {
+                selection = game.id
+                ranInstaller = false
+            }
+        }
+    }
+
+    private func runInstaller() {
+        guard let url = chooseFile(
+            title: "Lancer un installeur Windows",
+            message: "Choisis l'installeur (.exe). Une fois le jeu installé, ajoute-le avec « Ajouter un jeu non-Steam… ».",
+            types: [.exe]) else { return }
+        ranInstaller = true
+        library.runInstaller(url)
     }
 
     private var selectedGame: Game? {
