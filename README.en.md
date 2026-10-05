@@ -31,7 +31,7 @@ Your native games and your Windows games in one place, with their cover art. Cli
 
 ### Launch options you can read
 
-Each option says what it gains and what it risks: CPU performance, vsync, true full screen, macOS Game Mode, Steam overlay, performance counter, background shader compilation.
+Each option says what it gains and what it risks: CPU performance, vsync, true full screen, macOS Game Mode, Steam overlay, game language, performance counter, background shader compilation.
 
 Three levels, weakest to strongest: what Cidre ships for a game, your **general settings**, and what you **force for one game** in its panel. A dot marks what you set yourself; one click gives it up.
 
@@ -44,7 +44,7 @@ Three levels, weakest to strongest: what Cidre ships for a game, your **general 
 
 ## What Verger does not do (yet)
 
-- **No Steam overlay** in Windows games (Shift+Tab, in-game notifications).
+- **The Steam overlay is brand new.** Shift+Tab works in Steam games, but it has been tried on one game only so far; the "Steam overlay" option turns it off if a game displays badly.
 - **No online play protected by Easy Anti-Cheat.** Some games offer a mode without anti-cheat (Vermintide 2's "Modded Realm"): that is the "Permissive anti-cheat" option.
 - **Not every game runs.** Cidre is young; compatibility is checked game by game.
 - **The app is not notarized**: hence right-click → Open on first launch.

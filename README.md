@@ -33,7 +33,7 @@ Tes jeux natifs et tes jeux Windows au même endroit, avec leurs jaquettes. Un c
 
 ![La fiche d'un jeu et ses options de lancement](docs/captures/fiche-options.png)
 
-Chaque option dit ce qu'elle fait gagner et ce qu'elle risque : performance CPU, vsync, vrai plein écran, Mode Jeu de macOS, overlay Steam, compteur de performances, compilation des shaders en fond.
+Chaque option dit ce qu'elle fait gagner et ce qu'elle risque : performance CPU, vsync, vrai plein écran, Mode Jeu de macOS, overlay Steam, langue du jeu, compteur de performances, compilation des shaders en fond.
 
 Trois niveaux, du plus faible au plus fort : ce que Cidre livre pour un jeu, tes **réglages généraux**, et ce que tu **forces pour un jeu** dans sa fiche. Une pastille marque ce que tu as réglé toi-même ; un clic y renonce.
 
@@ -48,7 +48,7 @@ Trois niveaux, du plus faible au plus fort : ce que Cidre livre pour un jeu, tes
 
 ## Ce que Verger ne fait pas (encore)
 
-- **Pas d'overlay Steam** dans les jeux Windows (Maj+Tab, notifications en jeu).
+- **L'overlay Steam est tout neuf.** Maj+Tab fonctionne dans les jeux Steam, mais il n'a été essayé que sur un seul jeu pour l'instant ; l'option « Overlay Steam » le coupe si un jeu s'affiche mal.
 - **Pas de jeu en ligne protégé par Easy Anti-Cheat.** Certains jeux proposent un mode sans anti-triche (le « Modded Realm » de Vermintide 2) : c'est l'option « Anti-triche permissif ».
 - **Tous les jeux ne tournent pas.** Cidre est jeune ; la compatibilité se vérifie jeu par jeu.
 - **Application non notarisée** : d'où le clic droit → Ouvrir au premier lancement.
