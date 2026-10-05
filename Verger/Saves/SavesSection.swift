@@ -148,7 +148,7 @@ struct SavesSection: View {
     private static func title(_ state: SaveStatus.State) -> String {
         switch state {
         case .upToDate: L10n.string("À jour")
-        case .needsBackup: L10n.string("Modifié depuis la dernière sauvegarde")
+        case .needsBackup: L10n.string("À sauvegarder")
         case .needsRestore: L10n.string("Plus récent sur iCloud")
         case .diverged: L10n.string("Modifié des deux côtés")
         case .neverBackedUp: L10n.string("Jamais sauvegardé")

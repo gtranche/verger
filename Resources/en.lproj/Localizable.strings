@@ -264,7 +264,7 @@
 "Changer de dossier…" = "Change Folder…";
 "Dossier des sauvegardes" = "Saves Folder";
 "Choisis le dossier où ce jeu range ses sauvegardes : dans le dossier du jeu, ou sur le disque C: de Cidre." = "Choose the folder where this game keeps its saves: inside the game folder, or on Cidre's C: drive.";
-"Modifié depuis la dernière sauvegarde" = "Changed since the last backup";
+"À sauvegarder" = "Needs backup";
 "Plus récent sur iCloud" = "Newer on iCloud";
 "Modifié des deux côtés" = "Changed on both sides";
 "Jamais sauvegardé" = "Never backed up";
