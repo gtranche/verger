@@ -180,12 +180,7 @@ public struct CidreCLI: Sendable {
         process.standardError = pipe
 
         let tail = TextTail()
-        pipe.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
-                handle.readabilityHandler = nil
-                return
-            }
+        let reader = PipeReader(pipe) { data in
             let chunk = String(decoding: data, as: UTF8.self)
             tail.append(chunk)
             if let progress = DownloadProgress.last(in: chunk) { onProgress(progress) }
@@ -205,6 +200,8 @@ public struct CidreCLI: Sendable {
         } onCancel: {
             if process.isRunning { process.terminate() }
         }
+        // la fin de la sortie : le dernier avancement, ou le message d'erreur
+        reader.finish()
 
         // code 3 : Cidre n'a pas de session Steam memorisee
         if tail.sawPasswordPrompt || process.terminationStatus == 3 { throw CidreError.steamSessionMissing }

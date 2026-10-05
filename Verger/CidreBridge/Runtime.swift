@@ -256,14 +256,7 @@ public struct RuntimeInstaller: Sendable {
         process.standardError = pipe
 
         let lines = LineBuffer(onLine: onLine)
-        pipe.fileHandleForReading.readabilityHandler = { handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
-                handle.readabilityHandler = nil
-                return
-            }
-            lines.append(String(decoding: data, as: UTF8.self))
-        }
+        let reader = PipeReader(pipe) { lines.append(String(decoding: $0, as: UTF8.self)) }
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 process.terminationHandler = { _ in continuation.resume() }
@@ -272,6 +265,7 @@ public struct RuntimeInstaller: Sendable {
         } onCancel: {
             if process.isRunning { process.terminate() }
         }
+        reader.finish()
         try Task.checkCancellation()
         return Outcome(status: process.terminationStatus, lastLines: lines.tail(5))
     }

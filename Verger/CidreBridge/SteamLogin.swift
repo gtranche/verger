@@ -24,6 +24,7 @@ public final class SteamLoginSession: @unchecked Sendable {
     /// Jusqu'ou la sortie a deja ete interpretee.
     private var scanned = 0
     private var cancelled = false
+    private var reader: PipeReader?
 
     public init(cli: CidreCLI, onEvent: @escaping @Sendable (Event) -> Void) {
         self.cli = cli
@@ -40,12 +41,7 @@ public final class SteamLoginSession: @unchecked Sendable {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
-        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
-                handle.readabilityHandler = nil
-                return
-            }
+        reader = PipeReader(pipe) { [weak self] data in
             self?.received(String(decoding: data, as: UTF8.self))
         }
         process.terminationHandler = { [weak self] _ in self?.finished() }
@@ -88,6 +84,8 @@ public final class SteamLoginSession: @unchecked Sendable {
     }
 
     private func finished() {
+        // la derniere ligne dit si la connexion a reussi : la lire avant de conclure
+        reader?.finish()
         lock.lock()
         let text = output
         let wasCancelled = cancelled
