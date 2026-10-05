@@ -27,6 +27,7 @@ Your native games and your Windows games in one place, with their cover art. Cli
 - **Install a Steam game** from your account: Verger lists the ones that are not installed. The Windows version is downloaded through Cidre, with progress; when a macOS version exists, it is offered first.
 - **Add a non-Steam game**: choose its `.exe` and it joins the library. An installer (GOG, itch…) can be run from Verger too.
 - **Game updates**: a game that is behind the latest published build is tagged "Update".
+- **Saves on iCloud**: a Windows game's panel says where its copy stands (up to date, to back up, newer on iCloud) and lets you update it or take it back. Cidre also does it on its own, when the game launches and when you quit. For a game it does not know, you point it to the saves folder.
 - **Your running game on Discord** (optional): with its name and icon, as on Windows. Discord does not recognise on its own a Windows game running on a Mac.
 - **Cover art**: Steam's, or yours — an image of your own, or a search in [SteamGridDB](https://www.steamgriddb.com/) (free key), including for non-Steam games.
 
@@ -50,7 +51,6 @@ Three levels, weakest to strongest: what Cidre ships for a game, your **general 
 - **Not every game runs.** Cidre is young; compatibility is checked game by game.
 - **The app is not notarized**: hence right-click → Open on first launch.
 - **Steam sign-in by password** (passed to SteamCMD), not by QR code yet.
-- **Saves** of Windows games are synced to iCloud by Cidre for a few games, but Verger has no screen to manage them yet.
 
 ## Build from source
 

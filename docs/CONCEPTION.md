@@ -41,7 +41,9 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Retirer un jeu non-Steam / désinstaller un jeu du dossier Cidre | `cidre rm <id>` |
 | État du runtime (version, prérequis, jeu en cours) | `cidre status --json` |
 | Configurer le runtime après installation ou mise à jour | `cidre setup` |
-| Sauvegardes (iCloud) | `cidre sync <appid\|all> [backup\|restore]` |
+| État de la synchro des sauvegardes d'un jeu | `cidre saves <id> --json` |
+| Sauvegarder vers iCloud / reprendre ce qui y est plus récent | `cidre sync <id\|all> [backup\|restore]` |
+| Dire où un jeu range ses sauvegardes | `cidre saves set <id> <dossier> --json`, `cidre saves unset <id> --json` |
 
 Un jeu a un `id` : son appid Steam, ou `local-…` pour un jeu non-Steam.
 
@@ -125,7 +127,9 @@ Verger se met à jour depuis ses releases GitHub, séparément de Cidre. Au lanc
 Publier une version : pousser un tag `vX.Y.Z`. Le workflow GitHub Actions teste, construit `Verger.app` et l'attache à la release.
 
 ### 7. Sauvegardes
-État de synchro par jeu + bouton backup/restore (`cidre sync`), au-dessus de notre sync iCloud (Steam Cloud ne résout pas les roots Windows sur mac).
+Steam Cloud ne résout pas les dossiers Windows sur Mac : Cidre copie donc lui-même les sauvegardes des jeux Windows vers iCloud Drive (`CidreSaves/<id>`), en reprenant ce qui y est plus récent au lancement et en sauvegardant à la sortie. Rien n'est écrasé sans copie dans l'historique.
+
+La fiche d'un jeu lancé par Cidre montre où en est cette copie (`cidre saves`) : à jour, modifiée sur ce Mac, plus récente sur iCloud, modifiée des deux côtés, jamais sauvegardée. Elle propose le geste qui correspond (`cidre sync`), sauf pendant que le jeu tourne. Cidre sait où quelques jeux rangent leurs sauvegardes, y compris dans le dossier du jeu lui-même (Dead Cells) ; pour les autres, on lui indique le dossier (`cidre saves set`). Un jeu natif n'a pas cette section : Steam Cloud s'en occupe.
 
 ## Stack technique recommandée
 
@@ -165,7 +169,8 @@ Scripts/test.sh
 - **Langue des jeux** : Verger affiche le sélecteur dès que Cidre connaît l'option `langue` (à faire côté Cidre).
 - **Jeux en cours** : Verger demande à Cidre ce qui tourne toutes les dix secondes (`cidre running`), donc un jeu lancé depuis Steam s'affiche « En cours » lui aussi. **Fait.**
 - **Jeu en cours sur Discord** (option, coupée par défaut). Discord reconnaît un jeu par le nom de son programme Windows ; sur Mac il ne voit que `wine`. Verger annonce donc le jeu à l'application Discord du Mac, par son socket local, sous l'identifiant que Discord donne lui-même à ce jeu : même nom et même icône que s'il l'avait reconnu. L'identifiant vient de la liste publique de Discord (`DiscordCatalog`, cherchée par appid Steam puis par nom, gardée une semaine en cache) ; un jeu qu'elle ne connaît pas n'est pas annoncé. L'annonce dure tant que Verger et Discord sont ouverts. **Fait.**
-- **Phase 4 — polish** : saves, connexion par QR code, overlay Steam (à l'essai côté Cidre).
+- **Sauvegardes** : état de la synchro et gestes dans la fiche du jeu. **Fait.**
+- **Phase 4 — polish** : connexion par QR code, overlay Steam (à l'essai côté Cidre).
 
 ## Structure du dépôt
 
@@ -181,6 +186,7 @@ verger/
     Runtime/           # installer et mettre à jour Cidre
     Settings/          # réglages : Cidre, Steam, options générales, Verger
     Updater/           # mise à jour de Verger lui-même
+    Saves/             # sauvegardes : état de la synchro iCloud, sauvegarder, reprendre
     Covers/            # jaquettes choisies par l'utilisateur, recherche SteamGridDB
   Resources/           # traductions (en.lproj) ; le français est la langue du code
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)

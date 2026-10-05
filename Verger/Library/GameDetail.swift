@@ -40,9 +40,6 @@ struct GameDetail: View {
                 if let appid = game.appid {
                     LabeledContent("AppID", value: String(appid))
                 }
-                if let info {
-                    LabeledContent("Sauvegardes iCloud", value: L10n.string(info.savesSynced ? "Synchronisées" : "Non configurées"))
-                }
             } header: {
                 Text(game.name).font(.title3.weight(.semibold))
             }
@@ -57,6 +54,9 @@ struct GameDetail: View {
                     Text(error).foregroundStyle(.red)
                 }
             } else {
+                // Un jeu natif garde ses sauvegardes par Steam Cloud ; un jeu
+                // Windows compte sur la copie de Cidre.
+                SavesSection(game: game)
                 LaunchOptionsSection(game: game, info: $info)
             }
 

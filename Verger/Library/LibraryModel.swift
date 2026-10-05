@@ -140,6 +140,37 @@ final class LibraryModel {
         try await cli?.info(id: game.id)
     }
 
+    // MARK: Sauvegardes
+
+    /// Ou en est la synchro des sauvegardes d'un jeu ; `nil` si Cidre est trop
+    /// ancien pour le dire.
+    func saveStatus(of game: Game) async -> SaveStatus? {
+        try? await cli?.saves(id: game.id)
+    }
+
+    /// Sauvegarde vers iCloud, ou reprend ce qui y est plus recent, puis rend
+    /// l'etat a jour.
+    func syncSaves(of game: Game, _ direction: CidreCLI.SyncDirection) async -> SaveStatus? {
+        guard let cli else { return nil }
+        do {
+            try await cli.sync(id: game.id, direction)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        return try? await cli.saves(id: game.id)
+    }
+
+    /// Dit a Cidre ou ce jeu range ses sauvegardes.
+    func setSavesFolder(of game: Game, _ folder: URL) async -> SaveStatus? {
+        guard let cli else { return nil }
+        do {
+            return try await cli.setSavesFolder(id: game.id, folder)
+        } catch {
+            lastError = error.localizedDescription
+            return nil
+        }
+    }
+
     /// Applique un changement d'options (`cidre set` / `cidre unset`) et rend la
     /// fiche a jour, telle que Cidre la resout apres coup.
     func changeOptions(of game: Game, _ change: @escaping @Sendable (CidreCLI) async throws -> Void) async -> GameInfo? {

@@ -140,6 +140,13 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
+          saves) case "$2" in
+                   set) [ -d "$4" ] || { echo "dossier introuvable : $4" >&2; exit 1; }
+                        echo '{"id":"'"$3"'","configure":true,"etat":"jamais_sauvegarde","dossier":"'"$4"'","copie":"/c/'"$3"'","icloud":false,"local":{"fichiers":2,"octets":10,"modifie":1791000000},"sauvegarde":{"fichiers":0,"octets":0,"modifie":0},"a_sauvegarder":2,"a_restaurer":0,"historique":0}' ;;
+                   unset|inconnu) echo '{"id":"'"${3:-$2}"'","configure":false}' ;;
+                   *) echo '{"id":"'"$2"'","configure":true,"etat":"a_restaurer","dossier":"/jeu/save","copie":"/icloud/CidreSaves/'"$2"'","icloud":true,"local":{"fichiers":5,"octets":72154,"modifie":1791100000},"sauvegarde":{"fichiers":5,"octets":72200,"modifie":1791103600},"a_sauvegarder":0,"a_restaurer":1,"historique":3}' ;;
+                 esac ;;
+          sync) echo "sync $2 $3" >> "$(dirname "$0")/reglages.txt" ;;
           running) echo '["552500","local-x"]' ;;
           options) echo '{"options":{"tso":true,"vsync":false,"hud":true,"async":false,"fils_compilation":0,"eac_untrusted":false,"luajit":false,"plein_ecran":true,"gamemode":false,"overlay":true},"options_perso":{"vsync":false,"hud":true}}' ;;
           session) echo '{"compte":"joueur","connecte":false}' ;;
@@ -200,14 +207,34 @@ private let infoJSON = """
     try await cli.setOption(id: CidreCLI.defaultsID, .fullscreen, to: false)
     try await cli.resetOptions(id: CidreCLI.defaultsID, .vsync)
 
+    // sauvegardes
+    let saves = try await cli.saves(id: "588650")
+    #expect(saves.configured && saves.state == .needsRestore && saves.onICloud)
+    #expect(saves.folder == "/jeu/save" && saves.history == 3)
+    #expect(saves.local?.bytes == 72154)
+    #expect(saves.backup?.modified == Date(timeIntervalSince1970: 1_791_103_600))
+    // un jeu dont Cidre ne connait pas le dossier : rien d'autre que « non configure »
+    let unknown = try await cli.saves(id: "inconnu")
+    #expect(!unknown.configured && unknown.state == .unknown && unknown.local == nil)
+    try await cli.sync(id: "588650", .restore)
+    try await cli.sync(id: "588650", .backup)
+    #expect(try String(contentsOf: dir.appendingPathComponent("reglages.txt"), encoding: .utf8)
+        .hasSuffix("sync 588650 restore\nsync 588650 backup\n"))
+    let chosen = try await cli.setSavesFolder(id: "local-x", dir)
+    #expect(chosen.state == .neverBackedUp && chosen.folder == dir.path && !chosen.onICloud)
+    #expect(chosen.backup?.modified == nil)
+    await #expect(throws: CidreError.self) { try await cli.setSavesFolder(id: "local-x", dir.appendingPathComponent("absent")) }
+    #expect(try await !cli.resetSavesFolder(id: "local-x").configured)
+
     // jeux en cours
     #expect(try await cli.running() == ["552500", "local-x"])
 
     // session Steam
     #expect(try await cli.session() == SteamSession(account: "joueur", connected: false))
     try await cli.logout()
-    #expect(try String(contentsOf: dir.appendingPathComponent("reglages.txt"), encoding: .utf8)
-        .hasSuffix("set defaut plein_ecran false\nunset defaut vsync\nlogout\n"))
+    let journal = try String(contentsOf: dir.appendingPathComponent("reglages.txt"), encoding: .utf8)
+    #expect(journal.contains("set defaut plein_ecran false\nunset defaut vsync\n"))
+    #expect(journal.hasSuffix("logout\n"))
 
     // telechargement : avancement, session absente, echec, annulation
     let seen = Seen()
