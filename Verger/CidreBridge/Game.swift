@@ -131,6 +131,20 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
 
     public init() {}
 
+    /// Les options telles que Cidre les nomme (`tso=true vsync=false ...`), pour
+    /// un rapport d'incident.
+    public var summary: String {
+        var parts = [
+            "tso=\(tso)", "vsync=\(vsync)", "hud=\(hud)", "async=\(asyncShaders)",
+            "fils_compilation=\(compilerThreads)", "eac_untrusted=\(eacUntrusted)", "luajit=\(luajit)",
+        ]
+        if let fullscreen { parts.append("plein_ecran=\(fullscreen)") }
+        if let gameMode { parts.append("gamemode=\(gameMode)") }
+        if let overlay { parts.append("overlay=\(overlay)") }
+        if let language { parts.append("langue=\(language)") }
+        return parts.joined(separator: " ")
+    }
+
     /// Les noms des options pour la CLI (`cidre set <id> <option> <valeur>`).
     public enum Key: String, CodingKey, CaseIterable, Sendable {
         case tso, vsync, hud, luajit

@@ -10,6 +10,7 @@ struct LibraryView: View {
     @State private var selection: Game.ID?
     @State private var installingFromSteam = false
     @State private var loggingIn = false
+    @State private var reporting: ReportRequest?
     /// Un installeur vient d'etre lance : le jeu a ajouter est sans doute sur C:.
     @State private var ranInstaller = false
 
@@ -72,6 +73,7 @@ struct LibraryView: View {
             .sheet(isPresented: $loggingIn) {
                 LoginSheet().environment(library)
             }
+            .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
             .onChange(of: library.loginNeeded) { _, needed in
                 guard needed else { return }
                 library.loginNeeded = false
@@ -80,6 +82,8 @@ struct LibraryView: View {
             }
             .alert("Une erreur est survenue", isPresented: errorShown) {
                 Button("OK", role: .cancel) {}
+                // le message s'efface a la fermeture de l'alerte : on le garde
+                Button("Signaler…") { reporting = ReportRequest(error: library.lastError) }
             } message: {
                 Text(library.lastError ?? "")
             }
@@ -102,6 +106,11 @@ struct LibraryView: View {
                     selection = arguments[flag + 1]
                 }
                 if arguments.contains("--connexion") { loggingIn = true }
+                // `Verger --signaler <id>` prepare le rapport d'incident d'un jeu
+                if let flag = arguments.firstIndex(of: "--signaler"), arguments.indices.contains(flag + 1),
+                   let game = library.games.first(where: { $0.id == arguments[flag + 1] }) {
+                    reporting = ReportRequest(game: game)
+                }
                 if arguments.contains("--reglages") { openSettings() }
                 // le reste peut attendre : il interroge le reseau
                 await library.checkRuntime()

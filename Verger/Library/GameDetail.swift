@@ -12,6 +12,7 @@ struct GameDetail: View {
     @State private var error: String?
     @State private var confirmingUninstall = false
     @State private var searchingCover = false
+    @State private var reporting: ReportRequest?
     private var covers: CoverStore { CoverStore.shared }
 
     private var sourceLabel: String {
@@ -109,6 +110,9 @@ struct GameDetail: View {
                 }
                 .frame(maxWidth: .infinity)
 
+                Button("Signaler un problème…") { reporting = ReportRequest(game: game) }
+                    .frame(maxWidth: .infinity)
+
                 Menu("Jaquette") {
                     Button("Choisir une image…") { chooseCoverFile() }
                     Button("Chercher sur SteamGridDB…") { searchingCover = true }
@@ -139,6 +143,7 @@ struct GameDetail: View {
         }
         .formStyle(.grouped)
         .sheet(isPresented: $searchingCover) { CoverPicker(game: game) }
+        .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
         .confirmationDialog(
             "Désinstaller \(game.name) ?", isPresented: $confirmingUninstall
         ) {

@@ -140,6 +140,66 @@ final class LibraryModel {
         try await cli?.info(id: game.id)
     }
 
+    // MARK: Signaler un probleme
+
+    /// Un incident pret a partir, et le journal complet a y joindre.
+    struct PreparedReport {
+        let report: IssueReport
+        /// La fin du journal du jeu (plus longue que dans l'incident), deja nettoyee.
+        let attachment: URL?
+    }
+
+    /// Prepare un incident GitHub : pour un jeu (il va chez Cidre, avec la fin de
+    /// son journal) ou pour l'application (chez Verger). Tout ce qui identifie
+    /// l'utilisateur en est retire.
+    func prepareReport(game: Game?, error: String?) async -> PreparedReport {
+        if runtimeStatus == nil { runtimeStatus = try? await cli?.status() }
+        let anonymizer = Anonymizer.current(steamAccount: steamSession?.account ?? runtimeStatus?.steamAccount ?? steamUser)
+        let verger = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+        let cidre = runtimeStatus.map { $0.isDevelopmentCheckout ? "dev" : $0.version } ?? "?"
+
+        let happened = L10n.string("Ce qui s'est passé")
+        let toFill = L10n.string("(À compléter : ce que tu faisais, ce que tu attendais, ce que tu as vu.)")
+        let errorTitle = L10n.string("Message d'erreur")
+        let environment = L10n.string("Environnement")
+        let gameTitle = L10n.string("Jeu")
+        let fence = "```"
+        var text = "**\(happened)**\n\n\(toFill)\n"
+        if let error, !error.isEmpty {
+            text += "\n**\(errorTitle)**\n\(fence)text\n\(anonymizer.clean(error))\n\(fence)\n"
+        }
+        text += "\n**\(environment)**\n- Verger \(verger) · Cidre \(cidre)\n- \(SystemInfo.current.summary)\n"
+
+        var log: [String] = []
+        var attachment: URL?
+        if let game {
+            let options = (try? await cli?.info(id: game.id))?.options
+            text += "\n**\(gameTitle)**\n- \(game.name) (\(game.id)) — \(game.platform.rawValue), \(game.source.rawValue)\n"
+            if let options, game.launch == .cidre { text += "- \(options.summary)\n" }
+            if let cli {
+                log = ((try? await cli.log(id: game.id, lines: 250)) ?? []).map(anonymizer.clean)
+                // la piece jointe : une fin de journal plus longue que l'adresse n'en porte
+                let long = ((try? await cli.log(id: game.id, lines: 4000)) ?? []).map(anonymizer.clean)
+                if long.count > log.count || log.count > 40 {
+                    let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
+                        .replacingOccurrences(of: ":", with: "")
+                    let file = Self.logsDirectory.appendingPathComponent("rapports/journal-\(game.id)-\(stamp).txt")
+                    try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    if (try? long.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)) != nil {
+                        attachment = file
+                    }
+                }
+            }
+        }
+        let headline = error.flatMap { anonymizer.clean($0).split(whereSeparator: \.isNewline).first.map { String($0.prefix(90)) } }
+        let title = [game?.name, headline].compactMap { $0 }.joined(separator: " : ")
+        let report = IssueReport(
+            repository: game == nil ? "gtranche/verger" : "gtranche/cidre",
+            title: game != nil && headline == nil ? "\(title) : " : title,
+            text: text, logTitle: L10n.string("Fin du journal"), log: log)
+        return PreparedReport(report: report, attachment: attachment)
+    }
+
     // MARK: Sauvegardes
 
     /// Ou en est la synchro des sauvegardes d'un jeu ; `nil` si Cidre est trop

@@ -26,6 +26,7 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Fiche d'un jeu (taille, chemin, options actives) | `cidre info <id> --json` |
 | Lancer un jeu | `cidre play <id>` |
 | Les jeux en cours (lancés par Verger, par Steam ou au Terminal) | `cidre running --json` |
+| La fin du journal du dernier lancement d'un jeu, sans les traces | `cidre log <id> [lignes]` |
 | Régler une option de lancement d'un jeu | `cidre set <id> <option> <valeur>` |
 | Ne plus forcer une option pour un jeu | `cidre unset <id> [option]` |
 | Réglages généraux (tous les jeux) | `cidre options --json`, `cidre set defaut …`, `cidre unset defaut …` |
@@ -170,6 +171,7 @@ Scripts/test.sh
 - **Jeux en cours** : Verger demande à Cidre ce qui tourne toutes les dix secondes (`cidre running`), donc un jeu lancé depuis Steam s'affiche « En cours » lui aussi. **Fait.**
 - **Jeu en cours sur Discord** (option, coupée par défaut). Discord reconnaît un jeu par le nom de son programme Windows ; sur Mac il ne voit que `wine`. Verger annonce donc le jeu à l'application Discord du Mac, par son socket local, sous l'identifiant que Discord donne lui-même à ce jeu : même nom et même icône que s'il l'avait reconnu. L'identifiant vient de la liste publique de Discord (`DiscordCatalog`, cherchée par appid Steam puis par nom, gardée une semaine en cache) ; un jeu qu'elle ne connaît pas n'est pas annoncé. L'annonce dure tant que Verger et Discord sont ouverts. **Fait.**
 - **Sauvegardes** : état de la synchro et gestes dans la fiche du jeu. **Fait.**
+- **Signaler un problème** : Verger prépare un incident GitHub prérempli (`gtranche/cidre` pour un jeu, `gtranche/verger` pour l'application) : versions, Mac, options du jeu, fin de son journal (`cidre log`). Le texte passe par `Anonymizer`, qui retire le nom de session, les identifiants Steam, le nom du Mac, les adresses de courriel. Verger n'envoie rien : il ouvre la page de GitHub, l'utilisateur relit et publie ; le journal plus long est écrit dans un fichier à glisser dans l'incident. Pas de clé GitHub dans l'application, pas de serveur. **Fait.**
 - **Phase 4 — polish** : connexion par QR code, overlay Steam (à l'essai côté Cidre).
 
 ## Structure du dépôt
@@ -187,6 +189,7 @@ verger/
     Settings/          # réglages : Cidre, Steam, options générales, Verger
     Updater/           # mise à jour de Verger lui-même
     Saves/             # sauvegardes : état de la synchro iCloud, sauvegarder, reprendre
+    Report/            # signaler un problème : incident GitHub prérempli
     Covers/            # jaquettes choisies par l'utilisateur, recherche SteamGridDB
   Resources/           # traductions (en.lproj) ; le français est la langue du code
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)

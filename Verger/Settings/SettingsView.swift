@@ -204,6 +204,7 @@ private struct VergerSettings: View {
     @Environment(LibraryModel.self) private var library
     @AppStorage("langue") private var language = ""
     @AppStorage("cleSteamGridDB") private var gridKey = ""
+    @State private var reporting: ReportRequest?
 
     var body: some View {
         @Bindable var library = library
@@ -270,8 +271,15 @@ private struct VergerSettings: View {
                 Text("Pour chercher des jaquettes (jeux non-Steam, ou une image que tu préfères) depuis la fiche d'un jeu. La clé est gratuite et reste dans les préférences de Verger, sur ce Mac.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section {
+                Button("Signaler un problème…") { reporting = ReportRequest() }
+            } footer: {
+                Text("Pour un problème avec un jeu, passe plutôt par sa fiche : le rapport emportera la fin de son journal.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+        .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
         .task { if updater.latest == nil { await updater.check() } }
     }
 }

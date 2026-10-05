@@ -24,6 +24,9 @@ ENTIERS = ("candidates.count",)
 def technique(s):
     if not re.search(r"[A-Za-zÀ-ÿ]", s):
         return True
+    # une expression reguliere, un bout de Markdown : pas un texte d'interface
+    if re.search(r"\\\\|\(\?|\[0-9|\[A-Z|\[U:1|\*\*|```", s):
+        return True
     if re.fullmatch(r"[a-z0-9_.\-/:=%@#+ ]*", s) and " " not in s.strip():
         return True
     return s.startswith(("/", "http", "steam://", "Library/", "Contents/", "@", "+", "-", "--", "== ")) \
@@ -38,6 +41,7 @@ IGNORES = {
     "%@", "%lld", "dl %@", "brew install ", "steam guard code:", "two-factor code:",
     "confirm the login in the steam mobile app", "waiting for user info...ok", "invalid password",
     "rate limit exceeded", "two-factor code mismatch", "invalid login auth code", "fr_FR", "en_US",
+    "‹steam›", "‹mac›", "‹mail›", "macOS %@ · %@ · %@ · %@", "%2B", "text", "dev",
     "SET_ACTIVITY", "ERROR", "DISPATCH", "READY", "Discord", "steam",
     "ongletReglages", "cleSteamGridDB", "cidrePath", "steamUser", "AppleLanguages", "langue",
 }
