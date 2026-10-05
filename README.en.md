@@ -27,6 +27,7 @@ Your native games and your Windows games in one place, with their cover art. Cli
 - **Install a Steam game** from your account: Verger lists the ones that are not installed. The Windows version is downloaded through Cidre, with progress; when a macOS version exists, it is offered first.
 - **Add a non-Steam game**: choose its `.exe` and it joins the library. An installer (GOG, itch…) can be run from Verger too.
 - **Game updates**: a game that is behind the latest published build is tagged "Update".
+- **Your running game on Discord** (optional): with its name and icon, as on Windows. Discord does not recognise on its own a Windows game running on a Mac.
 - **Cover art**: Steam's, or yours — an image of your own, or a search in [SteamGridDB](https://www.steamgriddb.com/) (free key), including for non-Steam games.
 
 ### Launch options you can read

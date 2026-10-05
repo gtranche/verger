@@ -27,6 +27,7 @@ Tes jeux natifs et tes jeux Windows au même endroit, avec leurs jaquettes. Un c
 - **Installer un jeu Steam** de ton compte : Verger liste ceux qui ne sont pas installés. La version Windows se télécharge par Cidre, avec son avancement ; quand une version macOS existe, c'est elle qui est proposée d'abord.
 - **Ajouter un jeu non-Steam** : choisis son `.exe`, il entre dans la bibliothèque. Un installeur (GOG, itch…) se lance aussi depuis Verger.
 - **Mises à jour des jeux** : un jeu en retard sur la dernière version publiée porte l'étiquette « Mise à jour ».
+- **Ton jeu en cours sur Discord** (en option) : avec son nom et son icône, comme sur Windows. Discord ne reconnaît pas tout seul un jeu Windows qui tourne sur Mac.
 - **Jaquettes** : celles de Steam, ou celles que tu choisis — une image à toi, ou une recherche dans [SteamGridDB](https://www.steamgriddb.com/) (clé gratuite), y compris pour les jeux non-Steam.
 
 ### Des options de lancement lisibles

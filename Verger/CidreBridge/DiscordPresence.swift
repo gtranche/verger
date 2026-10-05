@@ -2,26 +2,13 @@ import Foundation
 
 /// Le jeu en cours, affiche dans le profil Discord de l'utilisateur (« Rich
 /// Presence »). Discord tourne sur le Mac et ecoute sur un socket local,
-/// `$TMPDIR/discord-ipc-0` ; on s'y presente au nom d'une application Discord
-/// (son identifiant est public) et on lui dit a quoi on joue. Rien ne passe
-/// par le reseau de notre cote : c'est le client Discord qui publie.
+/// `$TMPDIR/discord-ipc-0` ; on s'y presente sous l'identifiant que Discord
+/// donne au jeu (`DiscordCatalog`) : il l'affiche alors avec le nom et l'icone
+/// qu'il lui connait, comme s'il l'avait reconnu lui-meme. Rien ne passe par le
+/// reseau de notre cote : c'est le client Discord qui publie.
 ///
 /// L'activite vit tant que la connexion reste ouverte : la fermer l'efface.
 public actor DiscordPresence {
-    public struct Activity: Equatable, Sendable {
-        /// Le nom du jeu.
-        public var name: String
-        public var start: Date
-        /// Une illustration du jeu (adresse https), facultative.
-        public var image: URL?
-
-        public init(name: String, start: Date, image: URL? = nil) {
-            self.name = name
-            self.start = start
-            self.image = image
-        }
-    }
-
     public enum Failure: Error, Equatable, Sendable {
         /// Aucun socket : Discord n'est pas ouvert.
         case discordNotRunning
@@ -39,11 +26,12 @@ public actor DiscordPresence {
         self.directory = directory
     }
 
-    /// Affiche l'activite ; se connecte a Discord si ce n'est pas deja fait.
-    public func show(_ activity: Activity) throws {
+    /// Annonce le jeu, en cours depuis `start` ; se connecte a Discord si ce
+    /// n'est pas deja fait.
+    public func show(since start: Date) throws {
         do {
             try connect()
-            try send(opcode: .frame, Self.setActivity(activity, pid: ProcessInfo.processInfo.processIdentifier))
+            try send(opcode: .frame, Self.setActivity(since: start, pid: ProcessInfo.processInfo.processIdentifier))
             _ = try receive()
         } catch {
             close()
@@ -68,22 +56,17 @@ public actor DiscordPresence {
         ["v": 1, "client_id": applicationID]
     }
 
-    static func setActivity(_ activity: Activity, pid: Int32) -> [String: Any] {
-        var payload: [String: Any] = [
+    static func setActivity(since start: Date, pid: Int32) -> [String: Any] {
+        // Le nom et l'icone viennent de l'identifiant du jeu : on ne dit que
+        // « joue, depuis telle heure ».
+        let activity: [String: Any] = [
             "type": 0,   // « Joue a »
-            "details": activity.name,
-            "timestamps": ["start": Int(activity.start.timeIntervalSince1970)],
-            // Dans la liste des membres, afficher le nom du jeu (le champ
-            // `details`) plutot que celui de l'application Discord.
-            "status_display_type": 2,
+            "timestamps": ["start": Int(start.timeIntervalSince1970)],
         ]
-        if let image = activity.image {
-            payload["assets"] = ["large_image": image.absoluteString, "large_text": activity.name]
-        }
         return [
             "cmd": "SET_ACTIVITY",
             "nonce": UUID().uuidString,
-            "args": ["pid": Int(pid), "activity": payload],
+            "args": ["pid": Int(pid), "activity": activity],
         ]
     }
 

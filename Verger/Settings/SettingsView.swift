@@ -253,15 +253,13 @@ private struct VergerSettings: View {
                 Text("Verger se met à jour depuis ses versions publiées sur GitHub, séparément de Cidre : une mise à jour de l'interface ne retélécharge pas le moteur.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            if !LibraryModel.discordApplicationID.isEmpty {
-                Section {
-                    Toggle("Afficher le jeu en cours sur Discord", isOn: $library.discordEnabled)
-                } header: {
-                    Text(verbatim: "Discord")
-                } footer: {
-                    Text("Tes amis voient le jeu auquel tu joues, tant que Verger et Discord sont ouverts. Verger le dit à l'application Discord de ce Mac ; il ne se connecte pas à ton compte.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+            Section {
+                Toggle("Afficher le jeu en cours sur Discord", isOn: $library.discordEnabled)
+            } header: {
+                Text(verbatim: "Discord")
+            } footer: {
+                Text("Tes amis voient le jeu auquel tu joues, avec son nom et son icône, comme si Discord l'avait reconnu lui-même. Il faut que Discord connaisse le jeu, et que Verger et Discord restent ouverts pendant la partie.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section {
                 SecureField("Clé d'API SteamGridDB", text: $gridKey)

@@ -247,4 +247,4 @@
 "Valider" = "Submit";
 "Tu n'es pas connecté à Steam : cette liste date de ta dernière connexion." = "You are not signed in to Steam: this list dates from your last sign-in.";
 "Afficher le jeu en cours sur Discord" = "Show the running game on Discord";
-"Tes amis voient le jeu auquel tu joues, tant que Verger et Discord sont ouverts. Verger le dit à l'application Discord de ce Mac ; il ne se connecte pas à ton compte." = "Your friends see the game you are playing, as long as Verger and Discord are open. Verger tells the Discord app on this Mac; it does not sign in to your account.";
+"Tes amis voient le jeu auquel tu joues, avec son nom et son icône, comme si Discord l'avait reconnu lui-même. Il faut que Discord connaisse le jeu, et que Verger et Discord restent ouverts pendant la partie." = "Your friends see the game you are playing, with its name and icon, as if Discord had recognised it itself. Discord has to know the game, and Verger and Discord must stay open while you play.";

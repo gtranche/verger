@@ -192,39 +192,63 @@ final class LibraryModel {
         await updateDiscord()
     }
 
-    /// L'identifiant de l'application Discord au nom de laquelle Verger annonce
-    /// le jeu. Public par nature. Vide : la fonction n'est pas proposee.
-    static var discordApplicationID: String {
-        UserDefaults.standard.string(forKey: "discordApplicationID") ?? builtInDiscordApplicationID
-    }
-    private static let builtInDiscordApplicationID = ""
+    /// Les jeux que Discord connait ; charge quand l'option est activee.
+    private var discordCatalog: DiscordCatalog?
+    private var loadingDiscordCatalog = false
+
+    private static let discordCatalogCache = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Caches/Verger/discord-jeux.json")
 
     private func updateDiscord() async {
-        // le jeu a annoncer : le dernier demarre
-        let current = games
+        guard discordEnabled else {
+            await stopDiscord()
+            return
+        }
+        if discordCatalog == nil {
+            // un seul chargement a la fois : la liste pese 13 Mo
+            guard !loadingDiscordCatalog else { return }
+            loadingDiscordCatalog = true
+            discordCatalog = await DiscordCatalog.load(cache: Self.discordCatalogCache)
+            loadingDiscordCatalog = false
+        }
+        // Le jeu a annoncer : le dernier demarre, parmi ceux que Discord connait.
+        let candidates = games
             .filter { running.contains($0.id) }
-            .max { (runningSince[$0.id] ?? .distantPast) < (runningSince[$1.id] ?? .distantPast) }
-        guard discordEnabled, !Self.discordApplicationID.isEmpty, let game = current else {
-            if discordShown != nil {
-                await discord?.clear()
-                discordShown = nil
+            .sorted { (runningSince[$0.id] ?? .distantPast) > (runningSince[$1.id] ?? .distantPast) }
+        var current: (game: Game, application: String)?
+        for game in candidates {
+            if let application = discordCatalog?.applicationID(name: game.name, steamAppID: game.appid) {
+                current = (game, application)
+                break
             }
+        }
+        guard let current else {
+            await stopDiscord()
             return
         }
         // Deja annonce : on le redit une fois par minute, pour retrouver un
         // Discord qui aurait ete relance entre-temps.
-        if let shown = discordShown, shown.id == game.id, Date().timeIntervalSince(shown.at) < 60 { return }
-        if discord == nil { discord = DiscordPresence(applicationID: Self.discordApplicationID) }
-        let image = game.appid.flatMap {
-            URL(string: "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/\($0)/header.jpg")
+        if let shown = discordShown, shown.id == current.game.id, Date().timeIntervalSince(shown.at) < 60 { return }
+        // On se presente a Discord sous l'identite du jeu : un autre jeu, une
+        // autre connexion.
+        if discordShown?.id != current.game.id {
+            await discord?.clear()
+            discord = DiscordPresence(applicationID: current.application)
         }
         do {
-            try await discord?.show(.init(name: game.name, start: runningSince[game.id] ?? Date(), image: image))
-            discordShown = (game.id, Date())
+            try await discord?.show(since: runningSince[current.game.id] ?? Date())
+            discordShown = (current.game.id, Date())
         } catch {
             // Discord est ferme, ou refuse : on reessaiera au prochain tour.
             discordShown = nil
         }
+    }
+
+    private func stopDiscord() async {
+        guard discordShown != nil || discord != nil else { return }
+        await discord?.clear()
+        discord = nil
+        discordShown = nil
     }
 
     /// Un jeu du client Steam appartient a sa bibliotheque : c'est Steam qui le

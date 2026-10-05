@@ -164,7 +164,7 @@ Scripts/test.sh
 - **Interface en français et en anglais**, **jaquettes au choix** (image locale ou SteamGridDB). **Fait.**
 - **Langue des jeux** : Verger affiche le sélecteur dès que Cidre connaît l'option `langue` (à faire côté Cidre).
 - **Jeux en cours** : Verger demande à Cidre ce qui tourne toutes les dix secondes (`cidre running`), donc un jeu lancé depuis Steam s'affiche « En cours » lui aussi. **Fait.**
-- **Jeu en cours sur Discord** : Verger l'annonce à l'application Discord du Mac par son socket local (`Verger/CidreBridge/DiscordPresence.swift`), au nom d'une application Discord dont l'identifiant est à renseigner (`builtInDiscordApplicationID` dans `LibraryModel`). Tant qu'il est vide, l'option n'apparaît pas dans les réglages. L'annonce dure tant que Verger et Discord sont ouverts.
+- **Jeu en cours sur Discord** (option, coupée par défaut). Discord reconnaît un jeu par le nom de son programme Windows ; sur Mac il ne voit que `wine`. Verger annonce donc le jeu à l'application Discord du Mac, par son socket local, sous l'identifiant que Discord donne lui-même à ce jeu : même nom et même icône que s'il l'avait reconnu. L'identifiant vient de la liste publique de Discord (`DiscordCatalog`, cherchée par appid Steam puis par nom, gardée une semaine en cache) ; un jeu qu'elle ne connaît pas n'est pas annoncé. L'annonce dure tant que Verger et Discord sont ouverts. **Fait.**
 - **Phase 4 — polish** : saves, connexion par QR code, overlay Steam (à l'essai côté Cidre).
 
 ## Structure du dépôt
