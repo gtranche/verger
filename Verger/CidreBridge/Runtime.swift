@@ -9,7 +9,10 @@ public struct RuntimeStatus: Decodable, Equatable, Sendable {
     public let runtimePresent: Bool
     /// Le prefixe Wine a ete cree (`cidre setup` est passe).
     public let prefixReady: Bool
+    /// SteamCMD est la ET peut tourner sur ce Mac.
     public let steamcmdPresent: Bool
+    /// Le client Steam est installe. `nil` : ce Cidre ne sait pas le dire.
+    public let steamClientInstalled: Bool?
     /// Le compte que Cidre utiliserait : celui du client Steam, ou `CIDRE_STEAM_USER`.
     public let steamAccount: String?
     /// Un jeu tourne par Cidre : pas le moment de mettre a jour.
@@ -40,6 +43,7 @@ public struct RuntimeStatus: Decodable, Equatable, Sendable {
         case runtimePresent = "runtime"
         case prefixReady = "prefixe"
         case steamcmdPresent = "steamcmd"
+        case steamClientInstalled = "client_steam"
         case steamAccount = "compte_steam"
         case gameRunning = "jeu_en_cours"
         case prerequisites = "prerequis"
@@ -231,7 +235,10 @@ public struct RuntimeInstaller: Sendable {
                 onStep(.configuring(String(line.dropFirst(3).dropLast(3))))
             }
         }
-        guard setup.status == 0 else { throw RuntimeError.setupFailed(setup.lastLines) }
+        // 4 : Cidre est installe mais incomplet (SteamCMD n'a pas pu etre
+        // telecharge). Ce n'est pas un echec de l'installation : `cidre status`
+        // dit ce qui manque, et Verger propose de reessayer.
+        guard setup.status == 0 || setup.status == 4 else { throw RuntimeError.setupFailed(setup.lastLines) }
     }
 
     // MARK: Plomberie

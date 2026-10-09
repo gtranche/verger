@@ -288,3 +288,6 @@
 "Copié" = "Copied";
 "Copier le rapport" = "Copy the Report";
 "Ouvrir sur GitHub" = "Open on GitHub";
+"Le client Steam n'est pas installé. Il en faut un, connecté à ton compte, pour installer et lancer tes jeux Steam." = "The Steam client is not installed. You need one, signed in to your account, to install and launch your Steam games.";
+"Télécharger Steam" = "Download Steam";
+"SteamCMD, l'outil de Valve qui télécharge les jeux, n'a pas pu être installé. Vérifie ta connexion à Internet." = "SteamCMD, Valve's tool that downloads games, could not be installed. Check your Internet connection.";

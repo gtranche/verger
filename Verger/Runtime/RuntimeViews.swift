@@ -95,6 +95,25 @@ struct RuntimeBanners: View {
                         .help(status.gameRunning ? "Quitte d'abord le jeu en cours." : "Tes jeux, sauvegardes et réglages sont conservés.")
                 }
             }
+            if library.runtimeStep == nil, let status = library.runtimeStatus {
+                if status.steamClientInstalled == false {
+                    banner {
+                        Label("Le client Steam n'est pas installé. Il en faut un, connecté à ton compte, pour installer et lancer tes jeux Steam.", systemImage: "exclamationmark.triangle")
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                        Link("Télécharger Steam", destination: URL(string: "https://store.steampowered.com/about/")!)
+                        Button("Revérifier") { Task { await library.checkRuntime() } }
+                    }
+                }
+                if !status.steamcmdPresent {
+                    banner {
+                        Label("SteamCMD, l'outil de Valve qui télécharge les jeux, n'a pas pu être installé. Vérifie ta connexion à Internet.", systemImage: "exclamationmark.triangle")
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer()
+                        Button("Réessayer") { library.reconfigureRuntime() }
+                    }
+                }
+            }
             if let missing = library.runtimeStatus?.prerequisites.missing, !missing.isEmpty {
                 let command = "brew install " + missing.joined(separator: " ")
                 let missingList = missing.joined(separator: ", ")

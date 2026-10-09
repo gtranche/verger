@@ -139,8 +139,12 @@ try {
       <h2>Installer</h2>
       <ol class="etapes">
         <li>
-          <h3>Télécharge</h3>
-          <p>Récupère <code>Verger.zip</code> depuis la <a href="https://github.com/gtranche/verger/releases/latest">dernière version</a> sur GitHub et décompresse-le.</p>
+          <h3>Installe Steam et connecte-toi</h3>
+          <p>Télécharge le client Steam sur <a href="https://store.steampowered.com/about/">store.steampowered.com</a>, ouvre-le et connecte-toi à ton compte. Verger s'appuie sur lui pour lancer tes jeux Steam et connaître ta bibliothèque.</p>
+        </li>
+        <li>
+          <h3>Télécharge Verger</h3>
+          <p>Récupère <code>Verger.zip</code> depuis la <a href="https://github.com/gtranche/verger/releases/latest">dernière version</a> sur GitHub, décompresse-le et glisse Verger dans Applications.</p>
         </li>
         <li>
           <h3>Clic droit → Ouvrir</h3>
@@ -148,16 +152,26 @@ try {
         </li>
         <li>
           <h3>Laisse Verger installer Cidre</h3>
-          <p>Verger propose d'installer le moteur (environ 400 Mo). Accepte, il s'occupe du reste.</p>
+          <p>Verger propose d'installer le moteur (environ 400 Mo). Accepte&#8239;: il le télécharge, le configure, et installe SteamCMD, l'outil de Valve qui télécharge les jeux.</p>
+        </li>
+        <li>
+          <h3>Connecte-toi à Steam dans Verger</h3>
+          <p>Bouton <b>+</b>, «&#8239;Connexion à Steam…&#8239;». C'est une connexion à part de celle du client Steam&#8239;: elle sert à lire ta bibliothèque et à télécharger tes jeux. Une seule fois, elle est mémorisée.</p>
+        </li>
+        <li>
+          <h3>Installe un jeu et joue</h3>
+          <p>Bouton <b>+</b>, «&#8239;Installer un jeu Steam…&#8239;», puis double-clic sur sa jaquette.</p>
         </li>
       </ol>
+      <p class="note">S'il manque quelque chose (client Steam absent, SteamCMD non installé), Verger l'affiche en haut de la bibliothèque avec le bouton pour y remédier.</p>
 
       <div class="configuration">
         <h3>Configuration requise</h3>
         <ul>
           <li>Un Mac Apple Silicon</li>
           <li>macOS 26 (Tahoe) ou plus récent</li>
-          <li>Le client Steam, pour les jeux Steam</li>
+          <li>Un compte Steam et le client Steam</li>
+          <li>Ni Homebrew ni Terminal</li>
         </ul>
       </div>
     </div>

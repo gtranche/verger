@@ -12,11 +12,16 @@ Verger is the interface. The engine is called [Cidre](https://github.com/gtranch
 
 ## Install
 
-1. Download `Verger.zip` from the [latest release](https://github.com/gtranche/verger/releases/latest) and unzip it.
-2. Open Verger with **right-click → Open** the first time: the app is not notarized by Apple, so a double-click would be refused.
-3. Verger offers to install Cidre (about 400 MB): accept, it handles the rest.
+You need an Apple Silicon Mac running **macOS 26 (Tahoe)** or later, and a Steam account. No Homebrew, no Terminal.
 
-You need an Apple Silicon Mac running **macOS 26 (Tahoe)** or later, and the Steam client for Steam games.
+1. **Install the Steam client and sign in.** Download it from [store.steampowered.com/about](https://store.steampowered.com/about/), open it and sign in to your account. Verger relies on it to launch your Steam games and to know your library.
+2. **Download Verger.** Get `Verger.zip` from the [latest release](https://github.com/gtranche/verger/releases/latest), unzip it and drag Verger into Applications.
+3. **Open it with right-click → Open** the first time: the app is not notarized by Apple, so a double-click would be refused.
+4. **Let Verger install Cidre.** It offers to install the engine (about 400 MB): accept. It downloads it, sets it up, and installs SteamCMD, Valve's tool that downloads games.
+5. **Sign in to Steam in Verger**: **+** button, "Sign In to Steam…". This sign-in is separate from the Steam client's: it is used to read your library and download your games. Once only, it is remembered.
+6. **Install a game**: **+** button, "Install a Steam Game…", then double-click its cover to play.
+
+If something is missing (no Steam client, SteamCMD not installed), Verger shows it at the top of the library with the button to fix it. The status of each part is in Settings → Cidre.
 
 ## What Verger does
 

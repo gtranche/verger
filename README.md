@@ -12,11 +12,16 @@ Verger est l'interface. Le moteur s'appelle [Cidre](https://github.com/gtranche/
 
 ## Installer
 
-1. Télécharge `Verger.zip` depuis la [dernière version](https://github.com/gtranche/verger/releases/latest) et décompresse-le.
-2. Ouvre Verger par **clic droit → Ouvrir** la première fois : l'application n'est pas notarisée par Apple, un double-clic serait refusé.
-3. Verger propose d'installer Cidre (environ 400 Mo) : accepte, il s'occupe du reste.
+Il faut un Mac Apple Silicon sous **macOS 26 (Tahoe)** ou plus récent, et un compte Steam. Ni Homebrew ni Terminal.
 
-Il faut un Mac Apple Silicon sous **macOS 26 (Tahoe)** ou plus récent, et le client Steam pour les jeux Steam.
+1. **Installe le client Steam et connecte-toi.** Télécharge-le sur [store.steampowered.com/about](https://store.steampowered.com/about/), ouvre-le et connecte-toi à ton compte. Verger s'appuie sur lui pour lancer tes jeux Steam et pour connaître ta bibliothèque.
+2. **Télécharge Verger.** Récupère `Verger.zip` depuis la [dernière version](https://github.com/gtranche/verger/releases/latest), décompresse-le et glisse Verger dans Applications.
+3. **Ouvre-le par clic droit → Ouvrir** la première fois : l'application n'est pas notarisée par Apple, un double-clic serait refusé.
+4. **Laisse Verger installer Cidre.** Il propose d'installer le moteur (environ 400 Mo) : accepte. Il le télécharge, le configure, et installe SteamCMD, l'outil de Valve qui télécharge les jeux.
+5. **Connecte-toi à Steam dans Verger** : bouton **+**, « Connexion à Steam… ». C'est une connexion à part de celle du client Steam : elle sert à lire ta bibliothèque et à télécharger tes jeux. Une seule fois, elle est mémorisée.
+6. **Installe un jeu** : bouton **+**, « Installer un jeu Steam… », puis double-clic sur sa jaquette pour jouer.
+
+S'il manque quelque chose (client Steam absent, SteamCMD non installé), Verger l'affiche en haut de la bibliothèque avec le bouton pour y remédier. L'état de chaque pièce est dans Réglages → Cidre.
 
 ## Ce que fait Verger
 

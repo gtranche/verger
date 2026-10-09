@@ -43,6 +43,9 @@ private struct CidreSettings: View {
                     check("Runtime (Wine, DXVK, pilote Vulkan)", status.runtimePresent)
                     check("Préfixe Wine", status.prefixReady)
                     check("SteamCMD", status.steamcmdPresent)
+                    if let client = status.steamClientInstalled {
+                        check("Client Steam", client)
+                    }
                     check("Bibliothèques (SPIRV-Tools, FreeType)",
                           status.prerequisites.missing.isEmpty,
                           problem: L10n.format("Manque : %@", status.prerequisites.missing.joined(separator: ", ")))

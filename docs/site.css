@@ -330,6 +330,8 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
 .etapes p { margin-top: 0.4rem; color: var(--encre-douce); font-size: 0.98rem; }
 .etapes code { background: var(--fond); }
 
+.etapes + .note { margin-top: 1.75rem; color: var(--encre-douce); font-size: 0.95rem; }
+
 .configuration {
   margin-top: 2.5rem;
   padding-top: 1.5rem;

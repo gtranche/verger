@@ -33,6 +33,12 @@ import Testing
     #expect(status.version == "1.1.0" && !status.isDevelopmentCheckout)
     #expect(status.runtimePresent && !status.prefixReady)
     #expect(status.prerequisites.missing == ["freetype"])
+    // un Cidre d'avant ne dit rien du client Steam : on ne conclut pas qu'il manque
+    #expect(status.steamClientInstalled == nil)
+
+    let neuf = #"{"version":"1.4.4","racine":"/x","runtime":true,"prefixe":true,"steamcmd":false,"client_steam":false,"compte_steam":"","jeu_en_cours":false,"prerequis":{"spirv_tools":true,"freetype":true}}"#
+    let fresh = try JSONDecoder().decode(RuntimeStatus.self, from: Data(neuf.utf8))
+    #expect(!fresh.steamcmdPresent && fresh.steamClientInstalled == false)
 }
 
 /// Bout en bout sur une fausse archive : decompression, `cidre setup`, CLI rendue.
@@ -47,7 +53,8 @@ import Testing
         R=$(cd "$(dirname "$0")" && pwd)
         case "$1" in
           setup) echo "== 1/2 Pilote Vulkan =="; echo "  detail"; echo "== 2/2 Prefixe Wine =="
-                 [ -f "$R/CASSE" ] && { echo "wineboot a plante"; exit 4; }
+                 [ -f "$R/CASSE" ] && { echo "wineboot a plante"; exit 1; }
+                 [ -f "$R/INCOMPLET" ] && { echo "SteamCMD n'a pas pu etre installe"; exit 4; }
                  touch "$R/configure" ;;
           status) printf '{"version":"%s","racine":"%s","runtime":true,"prefixe":true,"steamcmd":false,"jeu_en_cours":false,"prerequis":{"spirv_tools":true,"freetype":true}}\\n' "$(cat "$R/VERSION")" "$R" ;;
         esac
@@ -81,6 +88,12 @@ import Testing
     try "partie".write(to: save, atomically: true, encoding: .utf8)
     _ = try await installer.install(release) { _ in }
     #expect(try String(contentsOf: save, encoding: .utf8) == "partie")
+
+    // un `cidre setup` incomplet (code 4 : SteamCMD manque) n'est pas un echec :
+    // Cidre est installe, et c'est `cidre status` qui dit ce qui manque
+    try "".write(to: installer.home.appendingPathComponent("cidre/INCOMPLET"), atomically: true, encoding: .utf8)
+    _ = try await installer.install(release) { _ in }
+    try fm.removeItem(at: installer.home.appendingPathComponent("cidre/INCOMPLET"))
 
     // un `cidre setup` qui echoue remonte avec la fin de sa sortie
     try "".write(to: installer.home.appendingPathComponent("cidre/CASSE"), atomically: true, encoding: .utf8)
