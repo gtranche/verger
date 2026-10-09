@@ -13,7 +13,11 @@ struct GameDetail: View {
     @State private var confirmingUninstall = false
     @State private var searchingCover = false
     @State private var reporting: ReportRequest?
+    @State private var showingLog = false
+    @State private var confirmingStop = false
     private var covers: CoverStore { CoverStore.shared }
+    /// Le journal demande au lancement de Verger ne s'ouvre qu'une fois.
+    @MainActor private static var openedLogFromArguments = false
 
     private var sourceLabel: String {
         switch game.source {
@@ -45,22 +49,7 @@ struct GameDetail: View {
                 Text(game.name).font(.title3.weight(.semibold))
             }
 
-            if game.launch == .native {
-                Section("Options de lancement") {
-                    Text("Jeu natif : lancé par Steam, sans la pile Cidre.")
-                        .foregroundStyle(.secondary)
-                }
-            } else if let error {
-                Section("Options de lancement") {
-                    Text(error).foregroundStyle(.red)
-                }
-            } else {
-                // Un jeu natif garde ses sauvegardes par Steam Cloud ; un jeu
-                // Windows compte sur la copie de Cidre.
-                SavesSection(game: game)
-                LaunchOptionsSection(game: game, info: $info)
-            }
-
+            // Jouer, arreter, mettre a jour : sous la main, avant les reglages.
             Section {
                 if let appid = game.appid, library.downloads[appid] == nil, library.updates[appid] != nil {
                     // Un jeu du dossier Cidre, c'est Cidre qui le met a jour ; un
@@ -105,10 +94,47 @@ struct GameDetail: View {
                     .disabled(!game.installed || library.running.contains(game.id))
                 }
 
+                // Un jeu lance par Cidre qui ne repond plus, ou dont la fenetre
+                // n'est jamais apparue : on peut le forcer a s'arreter.
+                if game.launch == .cidre, library.running.contains(game.id) {
+                    Button("Forcer l'arrêt…", role: .destructive) { confirmingStop = true }
+                        .frame(maxWidth: .infinity)
+                        .confirmationDialog("Forcer l'arrêt de \(game.name) ?", isPresented: $confirmingStop) {
+                            Button("Forcer l'arrêt", role: .destructive) {
+                                Task { await library.stop(game) }
+                            }
+                        } message: {
+                            Text("Le jeu est arrêté sans prévenir : ce qui n'a pas été sauvegardé dans la partie est perdu. Tout ce que Cidre fait tourner s'arrête avec lui.")
+                        }
+                }
+            }
+
+            if game.launch == .native {
+                Section("Options de lancement") {
+                    Text("Jeu natif : lancé par Steam, sans la pile Cidre.")
+                        .foregroundStyle(.secondary)
+                }
+            } else if let error {
+                Section("Options de lancement") {
+                    Text(error).foregroundStyle(.red)
+                }
+            } else {
+                // Un jeu natif garde ses sauvegardes par Steam Cloud ; un jeu
+                // Windows compte sur la copie de Cidre.
+                SavesSection(game: game)
+                LaunchOptionsSection(game: game, info: $info)
+            }
+
+            Section {
                 Button("Afficher dans le Finder") {
                     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: game.path)
                 }
                 .frame(maxWidth: .infinity)
+
+                if game.launch == .cidre {
+                    Button("Afficher le journal…") { showingLog = true }
+                        .frame(maxWidth: .infinity)
+                }
 
                 Button("Signaler un problème…") { reporting = ReportRequest(game: game) }
                     .frame(maxWidth: .infinity)
@@ -144,6 +170,16 @@ struct GameDetail: View {
         .formStyle(.grouped)
         .sheet(isPresented: $searchingCover) { CoverPicker(game: game) }
         .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
+        .sheet(isPresented: $showingLog) { LogSheet(game: game).environment(library) }
+        .onAppear {
+            // `Verger --journal <id>` ouvre le journal du jeu
+            let arguments = CommandLine.arguments
+            if let flag = arguments.firstIndex(of: "--journal"), arguments.indices.contains(flag + 1),
+               arguments[flag + 1] == game.id, !Self.openedLogFromArguments {
+                Self.openedLogFromArguments = true
+                showingLog = true
+            }
+        }
         .confirmationDialog(
             "Désinstaller \(game.name) ?", isPresented: $confirmingUninstall
         ) {

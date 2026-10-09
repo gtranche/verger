@@ -11,6 +11,8 @@ struct GameCard: View {
     /// Une version plus recente du jeu est publiee.
     var updateAvailable = false
     var cancelDownload: () -> Void = {}
+    /// Forcer l'arret du jeu en cours ; `nil` quand ce n'est pas possible (jeu natif).
+    var stop: (() -> Void)?
     let play: () -> Void
 
     @State private var hovering = false
@@ -59,12 +61,23 @@ struct GameCard: View {
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .padding(8)
         } else if isRunning {
-            Label("En cours…", systemImage: "hourglass")
-                .font(.callout.weight(.semibold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.regularMaterial, in: Capsule())
-                .padding(10)
+            HStack(spacing: 8) {
+                Label("En cours…", systemImage: "hourglass")
+                    .font(.callout.weight(.semibold))
+                if let stop {
+                    Button(action: stop) {
+                        Label("Forcer l'arrêt", systemImage: "stop.circle.fill")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+                    .help("Forcer l'arrêt")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.regularMaterial, in: Capsule())
+            .padding(10)
         } else if hovering && game.installed {
             Button(action: play) {
                 Label("Jouer", systemImage: "play.fill")

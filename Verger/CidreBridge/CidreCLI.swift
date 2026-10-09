@@ -90,6 +90,12 @@ public struct CidreCLI: Sendable {
         try await json(["info", id, "--json"])
     }
 
+    /// `cidre stop [<id>]` : force l'arret d'un jeu lance par Cidre -- et de tout
+    /// ce que Wine fait tourner, qui n'a qu'un prefixe. Sans `id` : tout arreter.
+    public func stop(id: String? = nil) async throws {
+        _ = try await checked(["stop"] + (id.map { [$0] } ?? []))
+    }
+
     /// `cidre running --json` : les identifiants des jeux en cours, qu'ils aient
     /// ete lances par Verger, par Steam ou au Terminal.
     public func running() async throws -> [String] {

@@ -34,6 +34,7 @@ Tes jeux natifs et tes jeux Windows au même endroit, avec leurs jaquettes. Un c
 - **Mises à jour des jeux** : un jeu en retard sur la dernière version publiée porte l'étiquette « Mise à jour ».
 - **Sauvegardes sur iCloud** : la fiche d'un jeu Windows dit où en est sa copie (à jour, à sauvegarder, plus récente sur iCloud) et permet de la mettre à jour ou de la reprendre. Cidre le fait aussi tout seul, au lancement et à la sortie du jeu. Pour un jeu qu'il ne connaît pas, tu lui indiques le dossier des sauvegardes.
 - **Signaler un problème** : depuis la fiche d'un jeu ou un message d'erreur, Verger prépare un incident GitHub avec les versions, les options et la fin du journal, débarrassés de ce qui t'identifie. Tu le relis et c'est toi qui l'envoies.
+- **Quand un jeu ne démarre pas** : « Forcer l'arrêt » sur sa carte ou dans sa fiche l'arrête, lui et tout ce que Cidre fait tourner. « Afficher le journal… » montre ce que le lancement a écrit, avec un filtre sur les erreurs et un bouton pour le copier avec le diagnostic de l'installation.
 - **Ton jeu en cours sur Discord** (en option) : avec son nom et son icône, comme sur Windows. Discord ne reconnaît pas tout seul un jeu Windows qui tourne sur Mac.
 - **Jaquettes** : celles de Steam, ou celles que tu choisis — une image à toi, ou une recherche dans [SteamGridDB](https://www.steamgriddb.com/) (clé gratuite), y compris pour les jeux non-Steam.
 

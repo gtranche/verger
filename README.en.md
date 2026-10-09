@@ -34,6 +34,7 @@ Your native games and your Windows games in one place, with their cover art. Cli
 - **Game updates**: a game that is behind the latest published build is tagged "Update".
 - **Saves on iCloud**: a Windows game's panel says where its copy stands (up to date, to back up, newer on iCloud) and lets you update it or take it back. Cidre also does it on its own, when the game launches and when you quit. For a game it does not know, you point it to the saves folder.
 - **Report a problem**: from a game's panel or an error message, Verger prepares a GitHub issue with the versions, the options and the end of the log, stripped of what identifies you. You read it over and you are the one who sends it.
+- **When a game does not start**: “Force Quit” on its card or in its panel stops it, along with everything Cidre is running. “Show the Log…” shows what the launch wrote, with an errors filter and a button to copy it together with the installation's diagnostics.
 - **Your running game on Discord** (optional): with its name and icon, as on Windows. Discord does not recognise on its own a Windows game running on a Mac.
 - **Cover art**: Steam's, or yours — an image of your own, or a search in [SteamGridDB](https://www.steamgriddb.com/) (free key), including for non-Steam games.
 

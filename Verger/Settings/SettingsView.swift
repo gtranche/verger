@@ -22,6 +22,7 @@ struct SettingsView: View {
 
 private struct CidreSettings: View {
     @Environment(LibraryModel.self) private var library
+    @State private var confirmingStop = false
 
     var body: some View {
         Form {
@@ -49,7 +50,20 @@ private struct CidreSettings: View {
                     check("Bibliothèques (SPIRV-Tools, FreeType)",
                           status.prerequisites.missing.isEmpty,
                           problem: L10n.format("Manque : %@", status.prerequisites.missing.joined(separator: ", ")))
-                    LabeledContent("Jeu en cours", value: L10n.string(status.gameRunning ? "Oui" : "Non"))
+                    LabeledContent("Jeu en cours") {
+                        HStack {
+                            Text(L10n.string(status.gameRunning ? "Oui" : "Non"))
+                            if status.gameRunning {
+                                Button("Tout arrêter…") { confirmingStop = true }
+                                    .help("Arrête tout ce que Cidre fait tourner : un jeu bloqué, ou des restes d'un lancement précédent.")
+                            }
+                        }
+                    }
+                    .confirmationDialog("Arrêter tout ce que Cidre fait tourner ?", isPresented: $confirmingStop) {
+                        Button("Tout arrêter", role: .destructive) { Task { await library.stop() } }
+                    } message: {
+                        Text("Un jeu en cours est arrêté sans prévenir : ce qui n'a pas été sauvegardé dans la partie est perdu.")
+                    }
                 }
                 Section {
                     if let step = library.runtimeStep {

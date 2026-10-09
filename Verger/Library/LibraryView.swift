@@ -11,6 +11,8 @@ struct LibraryView: View {
     @State private var installingFromSteam = false
     @State private var loggingIn = false
     @State private var reporting: ReportRequest?
+    /// Le jeu dont on demande confirmation avant de forcer l'arret.
+    @State private var stopping: Game?
     /// Un installeur vient d'etre lance : le jeu a ajouter est sans doute sur C:.
     @State private var ranInstaller = false
 
@@ -74,6 +76,15 @@ struct LibraryView: View {
                 LoginSheet().environment(library)
             }
             .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
+            .confirmationDialog(
+                "Forcer l'arrêt de \(stoppingName) ?",
+                isPresented: Binding(get: { stopping != nil }, set: { if !$0 { stopping = nil } }),
+                presenting: stopping
+            ) { game in
+                Button("Forcer l'arrêt", role: .destructive) { Task { await library.stop(game) } }
+            } message: { _ in
+                Text("Le jeu est arrêté sans prévenir : ce qui n'a pas été sauvegardé dans la partie est perdu. Tout ce que Cidre fait tourner s'arrête avec lui.")
+            }
             .onChange(of: library.loginNeeded) { _, needed in
                 guard needed else { return }
                 library.loginNeeded = false
@@ -103,6 +114,9 @@ struct LibraryView: View {
                 // connexion a Steam, `--reglages` les reglages
                 let arguments = CommandLine.arguments
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
+                    selection = arguments[flag + 1]
+                }
+                if let flag = arguments.firstIndex(of: "--journal"), arguments.indices.contains(flag + 1) {
                     selection = arguments[flag + 1]
                 }
                 if arguments.contains("--connexion") { loggingIn = true }
@@ -168,6 +182,7 @@ struct LibraryView: View {
                             download: game.appid.flatMap { library.downloads[$0] },
                             updateAvailable: game.appid.map { library.updates[$0] != nil } ?? false,
                             cancelDownload: { game.appid.map(library.cancelDownload) },
+                            stop: game.launch == .cidre ? { stopping = game } : nil,
                             play: { library.play(game) }
                         )
                     }
@@ -227,6 +242,8 @@ struct LibraryView: View {
         ranInstaller = true
         library.runInstaller(url)
     }
+
+    private var stoppingName: String { stopping?.name ?? "" }
 
     private var selectedGame: Game? {
         library.games.first { $0.id == selection }

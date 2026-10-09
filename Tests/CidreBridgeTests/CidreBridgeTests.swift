@@ -140,6 +140,8 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
+          stop) echo "stop ${2:-tout}" >> "$(dirname "$0")/reglages.txt"
+                if [ "$2" = natif ]; then echo "jeu natif : quitte-le depuis Steam" >&2; exit 1; fi ;;
           saves) case "$2" in
                    set) [ -d "$4" ] || { echo "dossier introuvable : $4" >&2; exit 1; }
                         echo '{"id":"'"$3"'","configure":true,"etat":"jamais_sauvegarde","dossier":"'"$4"'","copie":"/c/'"$3"'","icloud":false,"local":{"fichiers":2,"octets":10,"modifie":1791000000},"sauvegarde":{"fichiers":0,"octets":0,"modifie":0},"a_sauvegarder":2,"a_restaurer":0,"historique":0}' ;;
@@ -225,6 +227,13 @@ private let infoJSON = """
     #expect(chosen.backup?.modified == nil)
     await #expect(throws: CidreError.self) { try await cli.setSavesFolder(id: "local-x", dir.appendingPathComponent("absent")) }
     #expect(try await !cli.resetSavesFolder(id: "local-x").configured)
+
+    // forcer l'arret : un jeu, ou tout ; un jeu natif est refuse par Cidre
+    try await cli.stop(id: "588650")
+    try await cli.stop()
+    #expect(try String(contentsOf: dir.appendingPathComponent("reglages.txt"), encoding: .utf8)
+        .hasSuffix("stop 588650\nstop tout\n"))
+    await #expect(throws: CidreError.self) { try await cli.stop(id: "natif") }
 
     // jeux en cours
     #expect(try await cli.running() == ["552500", "local-x"])

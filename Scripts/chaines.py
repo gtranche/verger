@@ -25,7 +25,7 @@ def technique(s):
     if not re.search(r"[A-Za-zÀ-ÿ]", s):
         return True
     # une expression reguliere, un bout de Markdown : pas un texte d'interface
-    if re.search(r"\\\\|\(\?|\[0-9|\[A-Z|\[U:1|\*\*|```", s):
+    if re.search(r"\\\\|\(\?|\[0-9|\[A-Z|\[U:1|\*\*|```|err:\|", s):
         return True
     if re.fullmatch(r"[a-z0-9_.\-/:=%@#+ ]*", s) and " " not in s.strip():
         return True

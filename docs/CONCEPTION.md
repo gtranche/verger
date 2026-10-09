@@ -27,6 +27,7 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Lancer un jeu | `cidre play <id>` |
 | Les jeux en cours (lancés par Verger, par Steam ou au Terminal) | `cidre running --json` |
 | La fin du journal du dernier lancement d'un jeu, sans les traces | `cidre log <id> [lignes]` |
+| Forcer l'arrêt d'un jeu lancé par Cidre (et de tout ce que Wine fait tourner) | `cidre stop [<id>]` |
 | Régler une option de lancement d'un jeu | `cidre set <id> <option> <valeur>` |
 | Ne plus forcer une option pour un jeu | `cidre unset <id> [option]` |
 | Réglages généraux (tous les jeux) | `cidre options --json`, `cidre set defaut …`, `cidre unset defaut …` |
@@ -172,6 +173,7 @@ Scripts/test.sh
 - **Jeu en cours sur Discord** (option, coupée par défaut). Discord reconnaît un jeu par le nom de son programme Windows ; sur Mac il ne voit que `wine`. Verger annonce donc le jeu à l'application Discord du Mac, par son socket local, sous l'identifiant que Discord donne lui-même à ce jeu : même nom et même icône que s'il l'avait reconnu. L'identifiant vient de la liste publique de Discord (`DiscordCatalog`, cherchée par appid Steam puis par nom, gardée une semaine en cache) ; un jeu qu'elle ne connaît pas n'est pas annoncé. L'annonce dure tant que Verger et Discord sont ouverts. **Fait.**
 - **Sauvegardes** : état de la synchro et gestes dans la fiche du jeu. **Fait.**
 - **Signaler un problème** : Verger prépare un incident GitHub prérempli (`gtranche/cidre` pour un jeu, `gtranche/verger` pour l'application) : versions, Mac, options du jeu, fin de son journal (`cidre log`). Le texte passe par `Anonymizer`, qui retire le nom de session, les identifiants Steam, le nom du Mac, les adresses de courriel. Verger n'envoie rien : il ouvre la page de GitHub, l'utilisateur relit et publie ; le journal plus long est écrit dans un fichier à glisser dans l'incident. Pas de clé GitHub dans l'application, pas de serveur. **Fait.**
+- **Forcer l'arrêt et journal de lancement** : un jeu lancé par Cidre s'arrête depuis sa carte ou sa fiche (`cidre stop`), et « Afficher le journal… » montre la sortie de la commande de lancement puis la fin du journal du jeu (`cidre log`), nettoyées, relues toutes les deux secondes tant que le jeu tourne. « Copier avec le diagnostic » y ajoute les versions, l'état de l'installation et les options du jeu : c'est ce qu'on colle dans un message quand on dépanne une machine à distance. **Fait.**
 - **Phase 4 — polish** : connexion par QR code, overlay Steam (à l'essai côté Cidre).
 
 ## Structure du dépôt
@@ -190,6 +192,7 @@ verger/
     Updater/           # mise à jour de Verger lui-même
     Saves/             # sauvegardes : état de la synchro iCloud, sauvegarder, reprendre
     Report/            # signaler un problème : incident GitHub prérempli
+    Logs/              # journal de lancement d'un jeu
     Covers/            # jaquettes choisies par l'utilisateur, recherche SteamGridDB
   Resources/           # traductions (en.lproj) ; le français est la langue du code
     CidreBridge/       # appels CLI cidre + parsing JSON (cible à part, testée)

@@ -140,6 +140,44 @@ final class LibraryModel {
         try await cli?.info(id: game.id)
     }
 
+    // MARK: Arreter un jeu, lire son journal
+
+    /// Force l'arret d'un jeu lance par Cidre (ou, sans jeu, de tout ce que
+    /// Cidre fait tourner). Ce qui n'etait pas sauvegarde dans la partie est perdu.
+    func stop(_ game: Game? = nil) async {
+        guard let cli else { return }
+        do {
+            try await cli.stop(id: game?.id)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        if let game { launched.remove(game.id) }
+        await refreshRunning()
+        await checkRuntime()
+    }
+
+    /// Ce qu'un lancement a laisse comme traces, nettoye de ce qui identifie
+    /// l'utilisateur : la sortie de la commande de lancement, puis la fin du
+    /// journal du jeu (son dernier lancement, sans les lignes de trace).
+    struct LaunchLog: Equatable {
+        var command: [String] = []
+        var journal: [String] = []
+        var isEmpty: Bool { command.isEmpty && journal.isEmpty }
+    }
+
+    func launchLog(of game: Game, lines: Int = 1500) async -> LaunchLog {
+        let anonymizer = Anonymizer.current(steamAccount: steamSession?.account ?? runtimeStatus?.steamAccount ?? steamUser)
+        var log = LaunchLog()
+        let playLog = Self.logsDirectory.appendingPathComponent("play-\(game.id).log")
+        if let text = try? String(contentsOf: playLog, encoding: .utf8) {
+            log.command = text.split(whereSeparator: \.isNewline).suffix(60).map { anonymizer.clean(String($0)) }
+        }
+        if let cli {
+            log.journal = ((try? await cli.log(id: game.id, lines: lines)) ?? []).map(anonymizer.clean)
+        }
+        return log
+    }
+
     // MARK: Signaler un probleme
 
     /// Un incident pret a partir, et le journal complet a y joindre.
@@ -169,6 +207,11 @@ final class LibraryModel {
             text += "\n**\(errorTitle)**\n\(fence)text\n\(anonymizer.clean(error))\n\(fence)\n"
         }
         text += "\n**\(environment)**\n- Verger \(verger) · Cidre \(cidre)\n- \(SystemInfo.current.summary)\n"
+        if let s = runtimeStatus {
+            // l'etat de l'installation, tel que Cidre le nomme
+            let client = s.steamClientInstalled.map { "\($0)" } ?? "?"
+            text += "- runtime=\(s.runtimePresent) prefixe=\(s.prefixReady) steamcmd=\(s.steamcmdPresent) client_steam=\(client) jeu_en_cours=\(s.gameRunning)\n"
+        }
 
         var log: [String] = []
         var attachment: URL?
