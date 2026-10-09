@@ -313,3 +313,13 @@
 "Copier avec le diagnostic" = "Copy with Diagnostics";
 "Copie le journal affiché, précédé des versions, de l'état de l'installation et des options du jeu : de quoi le coller dans un message." = "Copies the displayed log, preceded by the versions, the installation status and the game's options: ready to paste into a message.";
 "Journal" = "Log";
+"Cidre n'est pas installé : il n'y a rien à diagnostiquer." = "Cidre is not installed: there is nothing to diagnose.";
+"Ce Cidre ne sait pas se diagnostiquer. Mets-le à jour, puis relance le diagnostic." = "This Cidre cannot diagnose itself. Update it, then run the diagnostic again.";
+"Diagnostic de Cidre" = "Cidre Diagnostic";
+"Verger vérifie l'installation, puis essaie de faire démarrer Wine, un programme x86-64 et le pilote graphique. Rien de ce qui tourne déjà n'est arrêté." = "Verger checks the installation, then tries to start Wine, an x86-64 program and the graphics driver. Nothing already running is stopped.";
+"Diagnostic en cours… Il peut durer une minute." = "Running the diagnostic… It can take a minute.";
+"Relancer" = "Run Again";
+"Diagnostic…" = "Diagnostic…";
+"Vérifie l'installation et essaie de faire démarrer Wine : un texte à copier quand un jeu ne se lance pas." = "Checks the installation and tries to start Wine: a text to copy when a game does not launch.";
+"Journal détaillé au prochain lancement" = "Detailed log on next launch";
+"Wine y écrit ses messages d'erreur, qu'il tait d'habitude. Un peu plus lent : à couper une fois le problème compris." = "Wine writes its error messages there, which it normally keeps quiet. Slightly slower: turn it off once the problem is understood.";

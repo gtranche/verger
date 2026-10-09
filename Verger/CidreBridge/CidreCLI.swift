@@ -90,6 +90,32 @@ public struct CidreCLI: Sendable {
         try await json(["info", id, "--json"])
     }
 
+    /// `cidre doctor` : le diagnostic de l'installation -- ce qui est la, ce qui
+    /// tourne, et si Wine demarre, avec ses messages d'erreur. Dure jusqu'a une
+    /// minute. Rend le texte tel que Cidre l'ecrit.
+    public func doctor() async throws -> String {
+        let result = try await run(["doctor"])
+        let text = String(decoding: result.stdout, as: UTF8.self) + String(decoding: result.stderr, as: UTF8.self)
+        // un Cidre d'avant `cidre doctor` repond par son mode d'emploi
+        guard text.contains("== ") else {
+            throw CidreError.invalidOutput(command: "doctor", underlying: String(text.prefix(80)))
+        }
+        return text
+    }
+
+    /// Une option de lancement lue par son nom dans `cidre info --json`, pour
+    /// celles que Verger ne connait pas (encore) comme interrupteur.
+    public func boolOption(id: String, named key: String) async -> Bool? {
+        guard let result = try? await checked(["info", id, "--json"]),
+              let info = try? JSONSerialization.jsonObject(with: result.stdout) as? [String: Any],
+              let options = info["options"] as? [String: Any] else { return nil }
+        return options[key] as? Bool
+    }
+
+    public func setOption(id: String, named key: String, to value: Bool) async throws {
+        _ = try await checked(["set", id, key, value ? "true" : "false"])
+    }
+
     /// `cidre stop [<id>]` : force l'arret d'un jeu lance par Cidre -- et de tout
     /// ce que Wine fait tourner, qui n'a qu'un prefixe. Sans `id` : tout arreter.
     public func stop(id: String? = nil) async throws {

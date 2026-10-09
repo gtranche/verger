@@ -12,6 +12,8 @@ struct LogSheet: View {
     @State private var loaded = false
     @State private var errorsOnly = false
     @State private var copied = false
+    /// Le journal detaille est-il demande pour ce jeu ? `nil` : Cidre ne connait pas l'option.
+    @State private var detailed: Bool?
 
     private var running: Bool { library.running.contains(game.id) }
 
@@ -81,6 +83,24 @@ struct LogSheet: View {
                 }
             }
 
+            if let detailed {
+                Toggle(isOn: Binding(
+                    get: { detailed },
+                    set: { on in
+                        self.detailed = on
+                        Task { await library.setDetailedLog(of: game, on) }
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Journal détaillé au prochain lancement")
+                        Text("Wine y écrit ses messages d'erreur, qu'il tait d'habitude. Un peu plus lent : à couper une fois le problème compris.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.checkbox)
+            }
+
             HStack {
                 Text("Ton nom de session, tes identifiants Steam et le nom de ton Mac sont retirés de ce texte.")
                     .font(.caption)
@@ -95,6 +115,7 @@ struct LogSheet: View {
         }
         .padding(20)
         .frame(width: 760, height: 560)
+        .task { detailed = await library.detailedLog(of: game) }
         // Tant que le jeu tourne, le journal s'allonge : on le relit.
         .task(id: running) {
             repeat {

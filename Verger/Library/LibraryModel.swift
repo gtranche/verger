@@ -178,6 +178,38 @@ final class LibraryModel {
         return log
     }
 
+    /// Le diagnostic de l'installation (`cidre doctor`), precede de ce que
+    /// Verger sait de lui-meme, et nettoye de ce qui identifie l'utilisateur.
+    func diagnostic() async -> String {
+        let anonymizer = Anonymizer.current(steamAccount: steamSession?.account ?? runtimeStatus?.steamAccount ?? steamUser)
+        let verger = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+        var text = "== Verger ==\n  version     : \(verger)\n  \(SystemInfo.current.summary)\n"
+        guard let cli else {
+            return text + "\n" + L10n.string("Cidre n'est pas installé : il n'y a rien à diagnostiquer.")
+        }
+        do {
+            text += try await cli.doctor()
+        } catch {
+            text += "\n" + L10n.string("Ce Cidre ne sait pas se diagnostiquer. Mets-le à jour, puis relance le diagnostic.")
+                + "\n" + error.localizedDescription
+        }
+        return anonymizer.clean(text)
+    }
+
+    /// Le journal detaille d'un jeu : Wine y ecrit ses messages d'erreur au
+    /// prochain lancement. `nil` si ce Cidre ne connait pas l'option.
+    func detailedLog(of game: Game) async -> Bool? {
+        await cli?.boolOption(id: game.id, named: "journal_detaille")
+    }
+
+    func setDetailedLog(of game: Game, _ on: Bool) async {
+        do {
+            try await cli?.setOption(id: game.id, named: "journal_detaille", to: on)
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
     // MARK: Signaler un probleme
 
     /// Un incident pret a partir, et le journal complet a y joindre.
@@ -191,7 +223,9 @@ final class LibraryModel {
     /// son journal) ou pour l'application (chez Verger). Tout ce qui identifie
     /// l'utilisateur en est retire.
     func prepareReport(game: Game?, error: String?) async -> PreparedReport {
-        if runtimeStatus == nil { runtimeStatus = try? await cli?.status() }
+        // l'etat du moment, pas celui lu a l'ouverture de Verger : « un jeu
+        // tourne-t-il ? » est justement ce qu'un rapport doit dire juste
+        if let fresh = try? await cli?.status() { runtimeStatus = fresh }
         let anonymizer = Anonymizer.current(steamAccount: steamSession?.account ?? runtimeStatus?.steamAccount ?? steamUser)
         let verger = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
         let cidre = runtimeStatus.map { $0.isDevelopmentCheckout ? "dev" : $0.version } ?? "?"

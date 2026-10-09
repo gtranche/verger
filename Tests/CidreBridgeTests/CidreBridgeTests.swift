@@ -140,6 +140,7 @@ private let infoJSON = """
           library) echo "Session SteamCMD non memorisee" >&2; exit 3 ;;
           add) printf '{"id":"local-x","appid":null,"nom":"%s","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"wrapper":null,"chemin":"/x","taille":0,"dernier_lancement":0}\\n' "${3:-sans nom}" ;;
           prefix) echo "/prefixe/drive_c" ;;
+          doctor) if [ -f "$(dirname "$0")/ANCIEN" ]; then echo "cidre — launcher Cidre"; else printf '\\n== Machine ==\\n  macOS : 27.0\\n== Wine repond-il ? ==\\n  -> PAS DE REPONSE apres 15 s\\n'; fi ;;
           stop) echo "stop ${2:-tout}" >> "$(dirname "$0")/reglages.txt"
                 if [ "$2" = natif ]; then echo "jeu natif : quitte-le depuis Steam" >&2; exit 1; fi ;;
           saves) case "$2" in
@@ -228,6 +229,12 @@ private let infoJSON = """
     await #expect(throws: CidreError.self) { try await cli.setSavesFolder(id: "local-x", dir.appendingPathComponent("absent")) }
     #expect(try await !cli.resetSavesFolder(id: "local-x").configured)
 
+    // diagnostic : le texte de Cidre ; un Cidre d'avant n'en a pas
+    let diagnostic = try await cli.doctor()
+    #expect(diagnostic.contains("== Wine repond-il ? ==") && diagnostic.contains("PAS DE REPONSE"))
+    try "".write(to: dir.appendingPathComponent("ANCIEN"), atomically: true, encoding: .utf8)
+    await #expect(throws: CidreError.self) { _ = try await cli.doctor() }
+
     // forcer l'arret : un jeu, ou tout ; un jeu natif est refuse par Cidre
     try await cli.stop(id: "588650")
     try await cli.stop()
@@ -281,4 +288,14 @@ private final class Seen: @unchecked Sendable {
     private var values: [DownloadProgress] = []
     func add(_ value: DownloadProgress) { lock.lock(); values.append(value); lock.unlock() }
     var all: [DownloadProgress] { lock.lock(); defer { lock.unlock() }; return values }
+}
+
+/// Le vrai `cidre doctor`, a la demande (il demarre Wine, une dizaine de secondes) :
+///   VERGER_ESSAI_DIAGNOSTIC=/chemin/vers/cidre Scripts/test.sh --filter leVraiDiagnostic
+@Test(.enabled(if: ProcessInfo.processInfo.environment["VERGER_ESSAI_DIAGNOSTIC"] != nil))
+func leVraiDiagnostic() async throws {
+    let cli = CidreCLI(executable: URL(fileURLWithPath: ProcessInfo.processInfo.environment["VERGER_ESSAI_DIAGNOSTIC"]!))
+    let text = try await cli.doctor()
+    print(text)
+    #expect(text.contains("== Machine ==") && text.contains("== Fin du diagnostic =="))
 }

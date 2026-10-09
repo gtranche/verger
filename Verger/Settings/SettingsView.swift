@@ -23,6 +23,7 @@ struct SettingsView: View {
 private struct CidreSettings: View {
     @Environment(LibraryModel.self) private var library
     @State private var confirmingStop = false
+    @State private var diagnosing = false
 
     var body: some View {
         Form {
@@ -77,6 +78,8 @@ private struct CidreSettings: View {
                                     .disabled(status.gameRunning)
                             }
                             Spacer()
+                            Button("Diagnostic…") { diagnosing = true }
+                                .help("Vérifie l'installation et essaie de faire démarrer Wine : un texte à copier quand un jeu ne se lance pas.")
                             Button("Reconfigurer") { library.reconfigureRuntime() }
                                 .disabled(status.gameRunning)
                                 .help("Relance la configuration de Cidre (préfixe Wine, pont Steam, SteamCMD). Tes jeux et sauvegardes ne sont pas touchés.")
@@ -102,7 +105,12 @@ private struct CidreSettings: View {
             }
         }
         .formStyle(.grouped)
-        .task { await library.checkRuntime() }
+        .sheet(isPresented: $diagnosing) { DiagnosticSheet().environment(library) }
+        .task {
+            await library.checkRuntime()
+            // `Verger --reglages --diagnostic` lance le diagnostic
+            if CommandLine.arguments.contains("--diagnostic") { diagnosing = true }
+        }
     }
 
     private func check(_ title: LocalizedStringKey, _ ok: Bool, problem: String = L10n.string("Absent")) -> some View {
