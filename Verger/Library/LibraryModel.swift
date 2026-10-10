@@ -114,7 +114,20 @@ final class LibraryModel {
 
     // MARK: Bibliotheque
 
+    /// Quand la bibliotheque a ete relue pour la derniere fois.
+    private var lastReload = Date.distantPast
+
+    /// Relit la bibliotheque si elle a pu changer sans Verger : un jeu
+    /// installe depuis un terminal, par une autre session, ou pendant que
+    /// l'application dormait en arriere-plan. Appelee quand Verger revient au
+    /// premier plan ; sans effet si la derniere lecture est toute recente.
+    func reloadIfStale() async {
+        guard Date().timeIntervalSince(lastReload) > 15 else { return }
+        await reload()
+    }
+
     func reload() async {
+        lastReload = Date()
         guard var cli = CidreCLI.locate(userChoice: cidrePath) else {
             self.cli = nil
             state = .cidreMissing

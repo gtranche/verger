@@ -98,6 +98,11 @@ struct LibraryView: View {
             } message: {
                 Text(library.lastError ?? "")
             }
+            // Verger peut rester ouvert des jours : en revenant au premier plan,
+            // il relit la bibliotheque, qui a pu changer sans lui.
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                Task { await library.reloadIfStale() }
+            }
             // Ce qui tourne en ce moment, y compris lance depuis Steam.
             .task {
                 while !Task.isCancelled {
