@@ -131,6 +131,10 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
     /// Vrai D3D12 via vkd3d-proton arm64ec (sinon d3d12 builtin de Wine, qui
     /// retombe en D3D11/DXVK). `nil` : ce Cidre ne connait pas l'option.
     public var dx12: Bool?
+    /// Rendu Direct3D 11 : `dxvk` (DXVK -> Vulkan -> Metal) ou `dxmt` (DXMT,
+    /// D3D11 -> Metal en un saut ; l'overlay Steam est alors coupe). `nil` : ce
+    /// Cidre ne connait pas l'option.
+    public var d3d11: String?
     /// La langue du jeu : `auto` (suivre macOS et Steam) ou un code a deux
     /// lettres. `nil` : ce Cidre ne connait pas l'option.
     public var language: String?
@@ -149,6 +153,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         if let overlay { parts.append("overlay=\(overlay)") }
         if let narrowBarriers { parts.append("narrow_barriers=\(narrowBarriers)") }
         if let dx12 { parts.append("dx12=\(dx12)") }
+        if let d3d11 { parts.append("d3d11=\(d3d11)") }
         if let language { parts.append("langue=\(language)") }
         return parts.joined(separator: " ")
     }
@@ -164,6 +169,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         case overlay
         case narrowBarriers = "narrow_barriers"
         case dx12
+        case d3d11
         case language = "langue"
     }
 
@@ -184,6 +190,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         overlay = try c.decodeIfPresent(Bool.self, forKey: .overlay)
         narrowBarriers = try c.decodeIfPresent(Bool.self, forKey: .narrowBarriers)
         dx12 = try c.decodeIfPresent(Bool.self, forKey: .dx12)
+        d3d11 = try c.decodeIfPresent(String.self, forKey: .d3d11)
         language = try c.decodeIfPresent(String.self, forKey: .language)
     }
 }

@@ -69,6 +69,24 @@ struct LaunchOptionsEditor: View {
             toggle("Vrai DirectX 12", .dx12, isOn: dx12,
                    help: "Utilise vkd3d-proton pour le vrai Direct3D 12 au lieu du repli Direct3D 11. Beaucoup de jeux récents restent en DX11 (le pilote plafonne au Feature Level 12.0) ; sans effet pour eux.")
         }
+        if let d3d11 = options.d3d11 {
+            Picker(selection: Binding(
+                get: { d3d11 },
+                set: { value in
+                    let id = targetID
+                    apply { try await $0.setOption(id: id, .d3d11, to: value) }
+                }
+            )) {
+                Text("DXVK").tag("dxvk")
+                Text("DXMT").tag("dxmt")
+                if !["dxvk", "dxmt"].contains(d3d11) {
+                    Text(verbatim: d3d11).tag(d3d11)
+                }
+            } label: {
+                label("Rendu Direct3D 11", .d3d11,
+                      help: "DXVK (par défaut) passe par Vulkan ; DXMT dessine directement en Metal, souvent bien plus rapide, mais l'overlay Steam est coupé avec lui.")
+            }
+        }
         Picker(selection: threads) {
             Text("Automatique").tag(0)
             ForEach([2, 4, 6, 8], id: \.self) { Text("\($0)").tag($0) }
