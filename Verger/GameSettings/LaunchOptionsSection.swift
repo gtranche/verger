@@ -87,6 +87,10 @@ struct LaunchOptionsEditor: View {
                       help: "DXVK (par défaut) passe par Vulkan ; DXMT dessine directement en Metal, souvent bien plus rapide, mais l'overlay Steam est coupé avec lui.")
             }
         }
+        if let metalfx = options.metalfx {
+            toggle("Agrandissement MetalFX", .metalfx, isOn: metalfx,
+                   help: "Avec DXMT seulement : le jeu rend à la taille du bureau et MetalFX produit les pixels physiques de l'écran, au lieu d'un agrandissement flou. Coûte quelques images par seconde.")
+        }
         Picker(selection: threads) {
             Text("Automatique").tag(0)
             ForEach([2, 4, 6, 8], id: \.self) { Text("\($0)").tag($0) }

@@ -219,6 +219,8 @@
 "Supprime les saccades quand le jeu découvre de nouveaux effets." = "Removes stutter when the game meets new effects.";
 "Rendu Direct3D 11" = "Direct3D 11 renderer";
 "DXVK (par défaut) passe par Vulkan ; DXMT dessine directement en Metal, souvent bien plus rapide, mais l'overlay Steam est coupé avec lui." = "DXVK (default) goes through Vulkan; DXMT draws straight to Metal, often much faster, but the Steam overlay is turned off with it.";
+"Agrandissement MetalFX" = "MetalFX upscaling";
+"Avec DXMT seulement : le jeu rend à la taille du bureau et MetalFX produit les pixels physiques de l'écran, au lieu d'un agrandissement flou. Coûte quelques images par seconde." = "With DXMT only: the game renders at desktop size and MetalFX produces the screen's physical pixels instead of a blurry upscale. Costs a few frames per second.";
 "Fils de compilation" = "Compiler threads";
 "Limiter évite qu'un gros chargement n'étouffe le jeu." = "Limiting them keeps a heavy loading screen from starving the game.";
 "Anti-triche permissif" = "Permissive anti-cheat";

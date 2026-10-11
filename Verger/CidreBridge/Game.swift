@@ -135,6 +135,9 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
     /// D3D11 -> Metal en un saut ; l'overlay Steam est alors coupe). `nil` : ce
     /// Cidre ne connait pas l'option.
     public var d3d11: String?
+    /// MetalFX spatial x2 sur la sortie (DXMT seulement). `nil` : ce Cidre ne
+    /// connait pas l'option.
+    public var metalfx: Bool?
     /// La langue du jeu : `auto` (suivre macOS et Steam) ou un code a deux
     /// lettres. `nil` : ce Cidre ne connait pas l'option.
     public var language: String?
@@ -154,6 +157,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         if let narrowBarriers { parts.append("narrow_barriers=\(narrowBarriers)") }
         if let dx12 { parts.append("dx12=\(dx12)") }
         if let d3d11 { parts.append("d3d11=\(d3d11)") }
+        if let metalfx { parts.append("metalfx=\(metalfx)") }
         if let language { parts.append("langue=\(language)") }
         return parts.joined(separator: " ")
     }
@@ -170,6 +174,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         case narrowBarriers = "narrow_barriers"
         case dx12
         case d3d11
+        case metalfx
         case language = "langue"
     }
 
@@ -191,6 +196,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         narrowBarriers = try c.decodeIfPresent(Bool.self, forKey: .narrowBarriers)
         dx12 = try c.decodeIfPresent(Bool.self, forKey: .dx12)
         d3d11 = try c.decodeIfPresent(String.self, forKey: .d3d11)
+        metalfx = try c.decodeIfPresent(Bool.self, forKey: .metalfx)
         language = try c.decodeIfPresent(String.self, forKey: .language)
     }
 }
