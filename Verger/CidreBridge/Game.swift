@@ -125,6 +125,12 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
     public var gameMode: Bool?
     /// Overlay Steam en jeu (Maj+Tab). `nil` : ce Cidre ne connait pas l'option.
     public var overlay: Bool?
+    /// Relache les barrieres GPU KosmicKrisp vers les vraies stages : les passes
+    /// se recouvrent, gain en scene chargee. `nil` : ce Cidre ne connait pas l'option.
+    public var narrowBarriers: Bool?
+    /// Vrai D3D12 via vkd3d-proton arm64ec (sinon d3d12 builtin de Wine, qui
+    /// retombe en D3D11/DXVK). `nil` : ce Cidre ne connait pas l'option.
+    public var dx12: Bool?
     /// La langue du jeu : `auto` (suivre macOS et Steam) ou un code a deux
     /// lettres. `nil` : ce Cidre ne connait pas l'option.
     public var language: String?
@@ -141,6 +147,8 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         if let fullscreen { parts.append("plein_ecran=\(fullscreen)") }
         if let gameMode { parts.append("gamemode=\(gameMode)") }
         if let overlay { parts.append("overlay=\(overlay)") }
+        if let narrowBarriers { parts.append("narrow_barriers=\(narrowBarriers)") }
+        if let dx12 { parts.append("dx12=\(dx12)") }
         if let language { parts.append("langue=\(language)") }
         return parts.joined(separator: " ")
     }
@@ -154,6 +162,8 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         case fullscreen = "plein_ecran"
         case gameMode = "gamemode"
         case overlay
+        case narrowBarriers = "narrow_barriers"
+        case dx12
         case language = "langue"
     }
 
@@ -172,6 +182,8 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         fullscreen = try c.decodeIfPresent(Bool.self, forKey: .fullscreen)
         gameMode = try c.decodeIfPresent(Bool.self, forKey: .gameMode)
         overlay = try c.decodeIfPresent(Bool.self, forKey: .overlay)
+        narrowBarriers = try c.decodeIfPresent(Bool.self, forKey: .narrowBarriers)
+        dx12 = try c.decodeIfPresent(Bool.self, forKey: .dx12)
         language = try c.decodeIfPresent(String.self, forKey: .language)
     }
 }

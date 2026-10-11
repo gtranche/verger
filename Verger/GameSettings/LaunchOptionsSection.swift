@@ -61,6 +61,14 @@ struct LaunchOptionsEditor: View {
                help: "Affiche les performances à l'écran, pour voir l'effet d'un réglage.")
         toggle("Shaders compilés en fond", .asyncShaders, isOn: options.asyncShaders,
                help: "Supprime les saccades quand le jeu découvre de nouveaux effets.")
+        if let narrowBarriers = options.narrowBarriers {
+            toggle("Passes GPU parallèles", .narrowBarriers, isOn: narrowBarriers,
+                   help: "Laisse les passes de rendu se recouvrir sur le GPU : gain de fps dans les scènes chargées. Validé sur Vermintide 2 ; à tester ailleurs.")
+        }
+        if let dx12 = options.dx12 {
+            toggle("Vrai DirectX 12", .dx12, isOn: dx12,
+                   help: "Utilise vkd3d-proton pour le vrai Direct3D 12 au lieu du repli Direct3D 11. Beaucoup de jeux récents restent en DX11 (le pilote plafonne au Feature Level 12.0) ; sans effet pour eux.")
+        }
         Picker(selection: threads) {
             Text("Automatique").tag(0)
             ForEach([2, 4, 6, 8], id: \.self) { Text("\($0)").tag($0) }
