@@ -44,6 +44,8 @@ IGNORES = {
     "‹steam›", "‹mac›", "‹mail›", "macOS %@ · %@ · %@ · %@", "%2B", "text", "dev",
     "SET_ACTIVITY", "ERROR", "DISPATCH", "READY", "Discord", "steam",
     "ongletReglages", "cleSteamGridDB", "cidrePath", "steamUser", "AppleLanguages", "langue",
+    # le rapport de jeu : son format est celui des fiches de Cidre, en francais
+    "partageProposes", "[[rapports]]", "[profil]", "Rapport de jeu : %@ (%@)", "Apple ", "Go",
 }
 
 LITTERAL = re.compile(r'"((?:[^"\\]|\\.)*)"')

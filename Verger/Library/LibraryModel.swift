@@ -290,6 +290,62 @@ final class LibraryModel {
         return PreparedReport(report: report, attachment: attachment)
     }
 
+    // MARK: Partager mon resultat
+
+    /// Ce qu'un rapport de jeu dit de la machine et de l'installation : la puce
+    /// et la memoire, la version de Cidre, le profil effectif du jeu et le
+    /// diagnostic anonymise. Chaque morceau que ce Cidre ne sait pas donner
+    /// reste `nil` ; le rapport part sans lui.
+    func gameReportContext(for game: Game) async -> GameReport.Context {
+        var context = GameReport.Context(machine: SystemInfo.current.machineLabel)
+        if let fresh = try? await cli?.status() { runtimeStatus = fresh }
+        context.cidreVersion = runtimeStatus?.version
+        context.options = (try? await cli?.info(id: game.id))?.options
+        if cli != nil {
+            // le diagnostic, deja nettoye de ce qui identifie l'utilisateur
+            context.diagnostic = await diagnostic()
+        }
+        return context
+    }
+
+    /// Le texte complet d'un rapport, ecrit dans un fichier : une adresse web ne
+    /// porte que quelques kilo-octets, et l'utilisateur peut glisser ce fichier
+    /// dans l'incident.
+    func saveGameReport(_ report: IssueReport, gameID: String) -> URL? {
+        let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
+            .replacingOccurrences(of: ":", with: "")
+        let file = Self.logsDirectory.appendingPathComponent("rapports/rapport-\(gameID)-\(stamp).md")
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard (try? report.body().write(to: file, atomically: true, encoding: .utf8)) != nil else { return nil }
+        return file
+    }
+
+    /// Le jeu dont une partie vient de finir, et pour lequel Verger propose,
+    /// une fois, de partager le resultat. `nil` : rien a proposer.
+    var shareSuggestion: Game?
+    /// Les jeux pour lesquels la proposition a deja ete faite : on ne la refait pas.
+    private var shareSuggested: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "partageProposes") ?? []) {
+        didSet { UserDefaults.standard.set(Array(shareSuggested).sorted(), forKey: "partageProposes") }
+    }
+    /// Une partie plus courte que ca ne dit rien du jeu.
+    static let shareSuggestionMinimumPlay: TimeInterval = 10 * 60
+
+    /// Un jeu vient de s'arreter apres une vraie partie : on proposera de
+    /// partager le resultat, discretement, et une seule fois par jeu.
+    private func noteEndedGames(before: Set<String>, startedAt: [String: Date], now: Date) {
+        for id in before.subtracting(running) {
+            guard let since = startedAt[id], now.timeIntervalSince(since) >= Self.shareSuggestionMinimumPlay,
+                  !shareSuggested.contains(id),
+                  let game = games.first(where: { $0.id == id }), game.launch == .cidre else { continue }
+            shareSuggested.insert(id)
+            shareSuggestion = game
+        }
+    }
+
+    func dismissShareSuggestion() {
+        shareSuggestion = nil
+    }
+
     // MARK: Sauvegardes
 
     /// Ou en est la synchro des sauvegardes d'un jeu ; `nil` si Cidre est trop
@@ -365,11 +421,14 @@ final class LibraryModel {
     /// Demande a Cidre ce qui tourne, et met Discord a jour. Appelee toutes les
     /// quelques secondes tant que la fenetre est ouverte.
     func refreshRunning() async {
+        let before = running
+        let startedAt = runningSince
         // un Cidre d'avant `cidre running` : on ne sait que ce qu'on a lance
         if let ids = try? await cli?.running() { reported = Set(ids) }
         let now = Date()
         for id in running where runningSince[id] == nil { runningSince[id] = now }
         runningSince = runningSince.filter { running.contains($0.key) }
+        noteEndedGames(before: before, startedAt: startedAt, now: now)
         await updateDiscord()
     }
 

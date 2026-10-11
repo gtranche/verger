@@ -119,18 +119,34 @@ public struct IssueReport: Equatable, Sendable {
     /// L'intitule du journal, puis ses lignes (la fin du journal d'un jeu).
     public var logTitle: String
     public var log: [String]
+    /// Les labels GitHub a poser sur l'incident (« rapport-jeu »).
+    public var labels: [String]
+    /// Quand le journal ne tient pas dans l'adresse : garder sa fin (un journal
+    /// de jeu, dont les dernieres lignes disent l'erreur) ou son debut (un
+    /// diagnostic, qui commence par l'essentiel).
+    public enum Truncation: Sendable { case tail, head }
+    public var truncation: Truncation
 
-    public init(repository: String, title: String, text: String, logTitle: String = "", log: [String] = []) {
+    public init(repository: String, title: String, text: String, logTitle: String = "", log: [String] = [],
+                labels: [String] = [], truncation: Truncation = .tail) {
         self.repository = repository
         self.title = title
         self.text = text
         self.logTitle = logTitle
         self.log = log
+        self.labels = labels
+        self.truncation = truncation
     }
 
-    /// Le texte complet, avec les `lines` dernieres lignes du journal.
+    /// Le texte complet, avec `lines` lignes du journal (sa fin, ou son debut
+    /// suivi d'une marque de coupure, selon `truncation`).
     public func body(logLines lines: Int? = nil) -> String {
-        let kept = lines.map { Array(log.suffix($0)) } ?? log
+        var kept = log
+        if lines == 0 {
+            kept = []
+        } else if let lines, lines < log.count {
+            kept = truncation == .tail ? Array(log.suffix(lines)) : Array(log.prefix(lines)) + ["[…]"]
+        }
         guard !kept.isEmpty else { return text }
         let fence = "```"
         return text + "\n\n**\(logTitle)**\n\(fence)text\n" + kept.joined(separator: "\n") + "\n\(fence)\n"
@@ -147,6 +163,9 @@ public struct IssueReport: Equatable, Sendable {
                 URLQueryItem(name: "title", value: title),
                 URLQueryItem(name: "body", value: body(logLines: lines)),
             ]
+            if !labels.isEmpty {
+                components.queryItems?.append(URLQueryItem(name: "labels", value: labels.joined(separator: ",")))
+            }
             // `+` doit etre encode : dans une adresse il se lirait comme un espace
             components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
             if let url = components.url, url.absoluteString.utf8.count <= maxLength || lines == 0 {

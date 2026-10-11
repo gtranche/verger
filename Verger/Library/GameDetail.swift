@@ -13,6 +13,7 @@ struct GameDetail: View {
     @State private var confirmingUninstall = false
     @State private var searchingCover = false
     @State private var reporting: ReportRequest?
+    @State private var sharing = false
     @State private var showingLog = false
     @State private var confirmingStop = false
     private var covers: CoverStore { CoverStore.shared }
@@ -139,6 +140,12 @@ struct GameDetail: View {
                 Button("Signaler un problème…") { reporting = ReportRequest(game: game) }
                     .frame(maxWidth: .infinity)
 
+                if game.launch == .cidre {
+                    Button("Partager mon résultat…") { sharing = true }
+                        .frame(maxWidth: .infinity)
+                        .help("Dis comment le jeu tourne sur ton Mac : ton rapport nourrit la fiche du jeu.")
+                }
+
                 Menu("Jaquette") {
                     Button("Choisir une image…") { chooseCoverFile() }
                     Button("Chercher sur SteamGridDB…") { searchingCover = true }
@@ -170,6 +177,7 @@ struct GameDetail: View {
         .formStyle(.grouped)
         .sheet(isPresented: $searchingCover) { CoverPicker(game: game) }
         .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
+        .sheet(isPresented: $sharing) { GameReportSheet(game: game).environment(library) }
         .sheet(isPresented: $showingLog) { LogSheet(game: game).environment(library) }
         .onAppear {
             // `Verger --journal <id>` ouvre le journal du jeu

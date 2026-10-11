@@ -11,6 +11,8 @@ struct LibraryView: View {
     @State private var installingFromSteam = false
     @State private var loggingIn = false
     @State private var reporting: ReportRequest?
+    /// Le jeu dont on partage le resultat, apres une partie.
+    @State private var sharing: Game?
     /// Le jeu dont on demande confirmation avant de forcer l'arret.
     @State private var stopping: Game?
     /// Un installeur vient d'etre lance : le jeu a ajouter est sans doute sur C:.
@@ -76,6 +78,7 @@ struct LibraryView: View {
                 LoginSheet().environment(library)
             }
             .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
+            .sheet(item: $sharing) { GameReportSheet(game: $0).environment(library) }
             .confirmationDialog(
                 "Forcer l'arrêt de \(stoppingName) ?",
                 isPresented: Binding(get: { stopping != nil }, set: { if !$0 { stopping = nil } }),
@@ -166,8 +169,35 @@ struct LibraryView: View {
                     }
                 }
             } else {
-                grid.safeAreaInset(edge: .top, spacing: 0) { RuntimeBanners() }
+                grid
+                    .safeAreaInset(edge: .top, spacing: 0) { RuntimeBanners() }
+                    .safeAreaInset(edge: .bottom, spacing: 0) { shareBanner }
             }
+        }
+    }
+
+    /// Apres une partie d'au moins dix minutes : proposer, une fois, de
+    /// partager le resultat. Un bandeau discret, pas une fenetre.
+    @ViewBuilder
+    private var shareBanner: some View {
+        if let game = library.shareSuggestion {
+            VStack(spacing: 0) {
+                Divider()
+                HStack(spacing: 10) {
+                    Label("Tu viens de jouer à \(game.name). Comment ça tournait ? Ton rapport nourrit la fiche du jeu.", systemImage: "hand.thumbsup")
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button("Partager mon résultat…") {
+                        sharing = game
+                        library.dismissShareSuggestion()
+                    }
+                    Button("Plus tard") { library.dismissShareSuggestion() }
+                }
+                .font(.callout)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+            .background(.bar)
         }
     }
 
