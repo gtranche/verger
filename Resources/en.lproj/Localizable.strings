@@ -219,6 +219,12 @@
 "Supprime les saccades quand le jeu découvre de nouveaux effets." = "Removes stutter when the game meets new effects.";
 "Rendu Direct3D 11" = "Direct3D 11 renderer";
 "DXVK (par défaut) passe par Vulkan ; DXMT dessine directement en Metal, souvent bien plus rapide, mais l'overlay Steam est coupé avec lui." = "DXVK (default) goes through Vulkan; DXMT draws straight to Metal, often much faster, but the Steam overlay is turned off with it.";
+"Passes GPU parallèles" = "Parallel GPU passes";
+"Laisse les passes de rendu se recouvrir sur le GPU : gain de fps dans les scènes chargées. Validé sur Vermintide 2 ; à tester ailleurs." = "Lets render passes overlap on the GPU: more fps in busy scenes. Validated on Vermintide 2; to be tried elsewhere.";
+"Vrai DirectX 12" = "Real DirectX 12";
+"Utilise vkd3d-proton pour le vrai Direct3D 12 au lieu du repli Direct3D 11. Beaucoup de jeux récents restent en DX11 (le pilote plafonne au Feature Level 12.0) ; sans effet pour eux." = "Uses vkd3d-proton for real Direct3D 12 instead of the Direct3D 11 fallback. Many recent games stay on DX11 (the driver tops out at Feature Level 12.0); no effect for them.";
+"DXVK" = "DXVK";
+"DXMT" = "DXMT";
 "Agrandissement MetalFX" = "MetalFX upscaling";
 "Avec DXMT seulement : le jeu rend à la taille du bureau et MetalFX produit les pixels physiques de l'écran, au lieu d'un agrandissement flou. Coûte quelques images par seconde." = "With DXMT only: the game renders at desktop size and MetalFX produces the screen's physical pixels instead of a blurry upscale. Costs a few frames per second.";
 "Fils de compilation" = "Compiler threads";
