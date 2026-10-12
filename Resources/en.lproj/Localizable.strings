@@ -255,7 +255,7 @@
 "Tu n'es pas connecté à Steam : cette liste date de ta dernière connexion." = "You are not signed in to Steam: this list dates from your last sign-in.";
 "Afficher le jeu en cours sur Discord" = "Show the running game on Discord";
 "Tes amis voient le jeu auquel tu joues, avec son nom et son icône, comme si Discord l'avait reconnu lui-même. Il faut que Discord connaisse le jeu, et que Verger et Discord restent ouverts pendant la partie." = "Your friends see the game you are playing, with its name and icon, as if Discord had recognised it itself. Discord has to know the game, and Verger and Discord must stay open while you play.";
-"Verger ne sait pas où ce jeu range ses sauvegardes. Indique-lui le dossier pour qu'elles soient copiées sur iCloud." = "Verger does not know where this game keeps its saves. Point it to the folder so they are copied to iCloud.";
+"Verger ne sait pas encore où ce jeu range ses sauvegardes : Cidre le cherche tout seul à la fin de ta première partie. Tu peux aussi indiquer le dossier maintenant." = "Verger does not know yet where this game keeps its saves: Cidre looks for them by itself at the end of your first session. You can also pick the folder now.";
 "Choisir le dossier des sauvegardes…" = "Choose the Saves Folder…";
 "Sauvegardes" = "Saves";
 "Cidre reprend ce qui est plus récent sur iCloud au lancement du jeu, et sauvegarde quand tu le quittes. Rien n'est écrasé sans qu'une copie de l'ancienne version soit gardée." = "Cidre takes what is newer on iCloud when the game launches, and backs up when you quit it. Nothing is overwritten without keeping a copy of the previous version.";

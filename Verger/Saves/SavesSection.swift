@@ -17,7 +17,7 @@ struct SavesSection: View {
             if let status, status.configured {
                 configured(status)
             } else if loaded {
-                Text("Verger ne sait pas où ce jeu range ses sauvegardes. Indique-lui le dossier pour qu'elles soient copiées sur iCloud.")
+                Text("Verger ne sait pas encore où ce jeu range ses sauvegardes : Cidre le cherche tout seul à la fin de ta première partie. Tu peux aussi indiquer le dossier maintenant.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
