@@ -353,3 +353,6 @@
 "Ce qui marche, ce qui coince, les options qui ont aidé." = "What works, what gets stuck, the options that helped.";
 "Aperçu du rapport" = "Report preview";
 "Une adresse web ne porte que le début du diagnostic. Pour le joindre en entier, glisse ce fichier dans l'incident :" = "A web address only carries the beginning of the diagnostic. To attach all of it, drag this file into the issue:";
+"Le jeu s'est arrêté : %@" = "The game stopped: %@";
+"À faire : %@" = "What to do: %@";
+"Journal : %@" = "Log: %@";

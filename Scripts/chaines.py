@@ -40,6 +40,7 @@ IGNORES = {
     "Português", "Polski", "%@#%@", "sleep 1; /usr/bin/open \"$0\"", "Verger.zip", "Verger (version précédente)",
     "%@", "%lld", "dl %@", "brew install ", "steam guard code:", "two-factor code:",
     "confirm the login in the steam mobile app", "waiting for user info...ok", "invalid password",
+    "cause probable : ", "\n    a faire : ",
     "rate limit exceeded", "two-factor code mismatch", "invalid login auth code", "fr_FR", "en_US",
     "‹steam›", "‹mac›", "‹mail›", "macOS %@ · %@ · %@ · %@", "%2B", "text", "dev",
     "SET_ACTIVITY", "ERROR", "DISPATCH", "READY", "Discord", "steam",

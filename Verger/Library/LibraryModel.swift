@@ -398,7 +398,7 @@ final class LibraryModel {
             do {
                 try await cli.play(id: game.id, log: log)
             } catch {
-                lastError = error.localizedDescription
+                lastError = LaunchFailureExplainer.explain(log: log, fallback: error.localizedDescription)
             }
             // Un jeu du client Steam : `cidre play` rend la main tout de suite,
             // et Steam met quelques secondes a le demarrer. On le garde « en
