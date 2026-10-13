@@ -74,6 +74,8 @@ final class LibraryModel {
     private(set) var updates: [Int: GameUpdate] = [:]
     /// Telechargements en cours, par appid.
     private(set) var downloads: [Int: DownloadProgress] = [:]
+    /// Les reprises de bouteille en cours (quelques secondes).
+    private(set) var importing: Set<Int> = []
     private var downloadTasks: [Int: Task<Void, Never>] = [:]
 
     /// L'etat du runtime Cidre (`cidre status`), et la release plus recente s'il y en a une.
@@ -662,6 +664,24 @@ final class LibraryModel {
     }
 
     /// Telecharge la version Windows dans le dossier Cidre (`cidre dl`).
+    /// Reprend un jeu trouve dans une bouteille CrossOver, Whisky ou Heroic.
+    /// Rapide (clone sur le meme volume) : pas d'avancement, la bibliotheque se
+    /// recharge a la fin.
+    func importGame(appid: Int) {
+        guard let cli, !importing.contains(appid) else { return }
+        importing.insert(appid)
+        Task {
+            do {
+                try await cli.importGame(appid: appid)
+            } catch {
+                lastError = error.localizedDescription
+            }
+            importing.remove(appid)
+            await reload()
+            await loadOwned(refresh: true)
+        }
+    }
+
     func download(appid: Int) {
         guard let cli, downloadTasks[appid] == nil else { return }
         downloads[appid] = DownloadProgress()

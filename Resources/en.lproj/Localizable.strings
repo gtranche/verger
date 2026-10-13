@@ -259,7 +259,6 @@
 "Choisir le dossier des sauvegardes…" = "Choose the Saves Folder…";
 "Sauvegardes" = "Saves";
 "Cidre reprend ce qui est plus récent sur iCloud au lancement du jeu, et sauvegarde quand tu le quittes. Rien n'est écrasé sans qu'une copie de l'ancienne version soit gardée." = "Cidre takes what is newer on iCloud when the game launches, and backs up when you quit it. Nothing is overwritten without keeping a copy of the previous version.";
-"iCloud Drive n'est pas activé sur ce Mac : la copie reste sur ce disque. Elle te protège d'une désinstallation, pas d'une panne." = "iCloud Drive is not turned on on this Mac: the copy stays on this disk. It protects you from an uninstall, not from a failure.";
 "Sur ce Mac" = "On this Mac";
 "Sur iCloud" = "On iCloud";
 "Copie" = "Copy";
@@ -356,3 +355,18 @@
 "Le jeu s'est arrêté : %@" = "The game stopped: %@";
 "À faire : %@" = "What to do: %@";
 "Journal : %@" = "Log: %@";
+"Synchronisation" = "Sync";
+"Steam Cloud (API Steam)" = "Steam Cloud (Steam API)";
+"Steam Cloud (dossier macOS lié)" = "Steam Cloud (linked macOS folder)";
+"Copie Cidre sur iCloud" = "Cidre copy on iCloud";
+"Copie Cidre sur ce Mac" = "Cidre copy on this Mac";
+"Aucune" = "None";
+"Synchronisé par Steam" = "Synced by Steam";
+"Reprendre la copie" = "Restore the copy";
+"Steam synchronise ce jeu lui-même : Cidre ne copie rien." = "Steam syncs this game by itself: Cidre copies nothing.";
+"Steam Cloud synchronise ce jeu comme sur Windows ; Cidre se contente de surveiller." = "Steam Cloud syncs this game as on Windows; Cidre only watches.";
+"Steam Cloud ne sait pas synchroniser ce jeu sur macOS : Cidre garde une copie sur ce Mac (dans son dossier), prise à chaque sortie du jeu. Elle te protège d'une désinstallation, pas d'une panne." = "Steam Cloud cannot sync this game on macOS: Cidre keeps a copy on this Mac (in its folder), taken each time you quit the game. It protects you from an uninstall, not from a disk failure.";
+"Reprendre" = "Take over";
+"Déjà installé par %@ (bouteille « %@ ») : repris sans retéléchargement, la bouteille n'est pas modifiée." = "Already installed by %1$@ (bottle “%2$@”): taken over without re-downloading, the bottle is left untouched.";
+"Déjà installé par %@ · %@" = "Already installed by %1$@ · %2$@";
+

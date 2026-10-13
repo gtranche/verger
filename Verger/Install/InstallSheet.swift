@@ -119,14 +119,29 @@ private struct OwnedGameRow: View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(game.name).lineLimit(1)
-                Text(game.hasMac ? "macOS · Windows" : "Windows")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if game.inBottle {
+                    Text(verbatim: L10n.format("Déjà installé par %@ · %@", Self.toolName(game.origin), L10n.bytes(game.sizeBytes ?? 0)))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(game.hasMac ? "macOS · Windows" : "Windows")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
             if let progress = library.downloads[game.appid] {
                 DownloadStatus(progress: progress) { library.cancelDownload(appid: game.appid) }
                     .frame(width: 190)
+            } else if game.inBottle {
+                // Deja installe par un autre outil : on le reprend (clone, la
+                // bouteille reste intacte) plutot que de le retelecharger.
+                if library.importing.contains(game.appid) {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button("Reprendre") { library.importGame(appid: game.appid) }
+                        .help(L10n.format("Déjà installé par %@ (bouteille « %@ ») : repris sans retéléchargement, la bouteille n'est pas modifiée.", Self.toolName(game.origin), game.bottle ?? ""))
+                }
             } else if game.hasMac {
                 // La version macOS est native : c'est le choix par defaut. La
                 // version Windows par Cidre reste possible.
@@ -142,6 +157,17 @@ private struct OwnedGameRow: View {
             }
         }
         .padding(.vertical, 3)
+    }
+}
+
+extension OwnedGameRow {
+    static func toolName(_ origin: String?) -> String {
+        switch origin {
+        case "crossover": "CrossOver"
+        case "whisky": "Whisky"
+        case "heroic": "Heroic"
+        default: origin ?? "?"
+        }
     }
 }
 

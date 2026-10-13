@@ -13,6 +13,8 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
         case needsRestore = "a_restaurer"
         case diverged = "divergent"
         case neverBackedUp = "jamais_sauvegarde"
+        /// Steam synchronise ce jeu lui-meme (dossier macOS lie) : Cidre ne copie rien.
+        case steam = "steam"
         /// Rien d'un cote ni de l'autre : le jeu n'a pas encore sauvegarde.
         case empty = "vide"
         case unknown
@@ -50,10 +52,20 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
     public let backupFolder: String?
     /// La copie est dans iCloud Drive (sinon elle reste sur ce Mac).
     public let onICloud: Bool
+    /// Comment ce jeu est synchronise : "steam_api" (API Remote Storage, par le
+    /// pont), "steam_macos" (dossier macOS declare a Steam Cloud, lie), "copie"
+    /// (copie Cidre, locale ou iCloud), "aucune" (dossier inconnu). Absent avec
+    /// un Cidre d'avant la 1.5.9.
+    public let sync: String?
+    /// La meme chose en une phrase, ecrite par Cidre.
+    public let syncDetail: String?
     public let local: Side?
     public let backup: Side?
     /// Copies de precaution gardees avant chaque ecrasement.
     public let history: Int
+
+    /// Steam synchronise ce jeu lui-meme (par l'API ou par le dossier macOS lie).
+    public var syncedBySteam: Bool { sync == "steam_api" || sync == "steam_macos" }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -62,6 +74,8 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
         case folder = "dossier"
         case backupFolder = "copie"
         case onICloud = "icloud"
+        case sync = "synchro"
+        case syncDetail = "synchro_detail"
         case local
         case backup = "sauvegarde"
         case history = "historique"
@@ -75,6 +89,8 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
         folder = try c.decodeIfPresent(String.self, forKey: .folder)
         backupFolder = try c.decodeIfPresent(String.self, forKey: .backupFolder)
         onICloud = try c.decodeIfPresent(Bool.self, forKey: .onICloud) ?? false
+        sync = try c.decodeIfPresent(String.self, forKey: .sync)
+        syncDetail = try c.decodeIfPresent(String.self, forKey: .syncDetail)
         local = try c.decodeIfPresent(Side.self, forKey: .local)
         backup = try c.decodeIfPresent(Side.self, forKey: .backup)
         history = try c.decodeIfPresent(Int.self, forKey: .history) ?? 0

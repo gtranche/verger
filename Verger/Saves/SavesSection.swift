@@ -30,9 +30,11 @@ struct SavesSection: View {
             Text("Sauvegardes")
         } footer: {
             if let status, status.configured {
-                Text(status.onICloud
+                Text(status.syncedBySteam
+                    ? "Steam Cloud synchronise ce jeu comme sur Windows ; Cidre se contente de surveiller."
+                    : status.onICloud
                     ? "Cidre reprend ce qui est plus récent sur iCloud au lancement du jeu, et sauvegarde quand tu le quittes. Rien n'est écrasé sans qu'une copie de l'ancienne version soit gardée."
-                    : "iCloud Drive n'est pas activé sur ce Mac : la copie reste sur ce disque. Elle te protège d'une désinstallation, pas d'une panne.")
+                    : "Steam Cloud ne sait pas synchroniser ce jeu sur macOS : Cidre garde une copie sur ce Mac (dans son dossier), prise à chaque sortie du jeu. Elle te protège d'une désinstallation, pas d'une panne.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -46,6 +48,13 @@ struct SavesSection: View {
 
     @ViewBuilder
     private func configured(_ status: SaveStatus) -> some View {
+        if let sync = status.sync {
+            LabeledContent("Synchronisation") {
+                Text(verbatim: Self.syncTitle(sync, onICloud: status.onICloud))
+                    .foregroundStyle(status.syncedBySteam ? Color.accentColor : .secondary)
+            }
+            .help(status.syncDetail ?? "")
+        }
         LabeledContent("État") {
             Label(Self.title(status.state), systemImage: Self.symbol(status.state))
                 .foregroundStyle(Self.tint(status.state))
@@ -68,14 +77,18 @@ struct SavesSection: View {
             case .needsBackup, .neverBackedUp:
                 syncButton("Sauvegarder maintenant", "arrow.up.circle", .backup, prominent: true)
             case .needsRestore:
-                syncButton("Reprendre la version d'iCloud", "arrow.down.circle", .restore, prominent: true)
+                syncButton(status.onICloud ? "Reprendre la version d'iCloud" : "Reprendre la copie", "arrow.down.circle", .restore, prominent: true)
             case .diverged:
                 Text("Des fichiers ont changé des deux côtés. Chaque bouton ne touche que ceux qui sont plus récents de son côté.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 syncButton("Sauvegarder maintenant", "arrow.up.circle", .backup, prominent: false)
-                syncButton("Reprendre la version d'iCloud", "arrow.down.circle", .restore, prominent: false)
+                syncButton(status.onICloud ? "Reprendre la version d'iCloud" : "Reprendre la copie", "arrow.down.circle", .restore, prominent: false)
+            case .steam:
+                Text("Steam synchronise ce jeu lui-même : Cidre ne copie rien.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             case .upToDate, .empty, .unknown:
                 EmptyView()
             }
@@ -145,6 +158,16 @@ struct SavesSection: View {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
+    private static func syncTitle(_ sync: String, onICloud: Bool) -> String {
+        switch sync {
+        case "steam_api": L10n.string("Steam Cloud (API Steam)")
+        case "steam_macos": L10n.string("Steam Cloud (dossier macOS lié)")
+        case "copie": onICloud ? L10n.string("Copie Cidre sur iCloud") : L10n.string("Copie Cidre sur ce Mac")
+        case "aucune": L10n.string("Aucune")
+        default: sync
+        }
+    }
+
     private static func title(_ state: SaveStatus.State) -> String {
         switch state {
         case .upToDate: L10n.string("À jour")
@@ -152,6 +175,7 @@ struct SavesSection: View {
         case .needsRestore: L10n.string("Plus récent sur iCloud")
         case .diverged: L10n.string("Modifié des deux côtés")
         case .neverBackedUp: L10n.string("Jamais sauvegardé")
+        case .steam: L10n.string("Synchronisé par Steam")
         case .empty: L10n.string("Aucune sauvegarde pour l'instant")
         case .unknown: L10n.string("Inconnu")
         }
@@ -163,6 +187,7 @@ struct SavesSection: View {
         case .needsBackup, .neverBackedUp: "icloud.and.arrow.up"
         case .needsRestore: "icloud.and.arrow.down"
         case .diverged: "exclamationmark.icloud"
+        case .steam: "checkmark.icloud.fill"
         case .empty, .unknown: "icloud"
         }
     }
@@ -172,6 +197,7 @@ struct SavesSection: View {
         case .upToDate: .green
         case .needsBackup, .neverBackedUp, .diverged: .orange
         case .needsRestore: .blue
+        case .steam: .green
         case .empty, .unknown: .secondary
         }
     }

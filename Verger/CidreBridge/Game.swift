@@ -244,8 +244,18 @@ public struct OwnedGame: Decodable, Identifiable, Hashable, Sendable {
     /// Les versions que Steam distribue : "windows", "macos".
     public let platforms: [String]
     public let installed: Bool
+    /// "bouteille" : deja installe par CrossOver, Whisky ou Heroic, que
+    /// `cidre import` reprend (clone, bouteille intacte). Absent sinon.
+    public let source: String?
+    /// L'outil qui l'a installe ("crossover", "whisky", "heroic") et le nom de
+    /// sa bouteille.
+    public let origin: String?
+    public let bottle: String?
+    public let path: String?
+    public let sizeBytes: Int64?
 
     public var id: Int { appid }
+    public var inBottle: Bool { source == "bouteille" }
     public var hasMac: Bool { platforms.contains("macos") }
     public var hasWindows: Bool { platforms.contains("windows") }
 
@@ -254,6 +264,11 @@ public struct OwnedGame: Decodable, Identifiable, Hashable, Sendable {
         case name = "nom"
         case platforms = "plateformes"
         case installed = "installe"
+        case source
+        case origin = "origine"
+        case bottle = "bouteille"
+        case path = "chemin"
+        case sizeBytes = "taille"
     }
 }
 
