@@ -270,10 +270,14 @@ public struct CidreCLI: Sendable {
     /// en rapportant l'avancement. Annuler la tache arrete le telechargement
     /// (SteamCMD le reprendra ou il en etait).
     /// `cidre import <appid> --json` : reprend un jeu deja installe par CrossOver,
-    /// Whisky ou Heroic (clone APFS, bouteille intacte). Un refus (code 1) porte
-    /// son message sur l'erreur standard, montre tel quel.
-    public func importGame(appid: Int) async throws {
-        _ = try await checked(["import", String(appid), "--json"])
+    /// Whisky ou Heroic (clone APFS, bouteille intacte), et ramene ses
+    /// sauvegardes de la bouteille. Un refus (code 1) porte son message sur
+    /// l'erreur standard, montre tel quel.
+    @discardableResult
+    public func importGame(appid: Int) async throws -> ImportResult {
+        let result = try await checked(["import", String(appid), "--json"])
+        // le jeu est repris : une sortie illisible ne doit pas en faire un echec
+        return (try? JSONDecoder().decode(ImportResult.self, from: result.stdout)) ?? ImportResult()
     }
 
     public func download(

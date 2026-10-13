@@ -65,6 +65,15 @@ struct SavesSection: View {
         if let backup = status.backup, backup.files > 0 {
             LabeledContent(status.onICloud ? "Sur iCloud" : "Copie") { side(backup) }
         }
+        // le jeu vient d'une bouteille CrossOver, Whisky ou Heroic : ce que
+        // Cidre a ramene de ses sauvegardes
+        if let imported = status.imported, imported.state == .copied {
+            LabeledContent("Reprises de la bouteille") {
+                Text(verbatim: L10n.format("%lld fichier(s), bouteille « %@ »", imported.files, imported.bottle ?? ""))
+                    .foregroundStyle(.secondary)
+            }
+            .help(imported.message ?? "")
+        }
 
         if working {
             HStack { ProgressView().controlSize(.small); Text("Synchronisation…") }

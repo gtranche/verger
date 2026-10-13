@@ -369,6 +369,15 @@
 "Reprendre" = "Take over";
 "Déjà installé par %@ (bouteille « %@ ») : repris sans retéléchargement, la bouteille n'est pas modifiée." = "Already installed by %1$@ (bottle “%2$@”): taken over without re-downloading, the bottle is left untouched.";
 "Déjà installé par %@ · %@" = "Already installed by %1$@ · %2$@";
+"%@ : %lld fichier(s) de sauvegarde ramené(s) de la bouteille « %@ »." = "%1$@: %2$lld save file(s) brought over from the “%3$@” bottle.";
+"%@ : rien à ramener, les sauvegardes de ce Mac sont identiques à celles de la bouteille, ou plus récentes." = "%@: nothing to bring over, the saves on this Mac are identical to the bottle’s, or newer.";
+"%@ : Steam Cloud synchronise déjà ses sauvegardes, rien n'a été copié." = "%@: Steam Cloud already syncs its saves, nothing was copied.";
+"%@ : ses sauvegardes sont dans le dossier du jeu, elles sont venues avec lui." = "%@: its saves live in the game folder, they came along with it.";
+"%@ : aucune sauvegarde de ce jeu dans la bouteille « %@ »." = "%1$@: no saves for this game in the “%2$@” bottle.";
+"%@ : sauvegardes non trouvées dans la bouteille « %@ » (Cidre ne sait pas où ce jeu les range)." = "%1$@: saves not found in the “%2$@” bottle (Cidre does not know where this game keeps them).";
+"%@ : ses sauvegardes n'ont pas été ramenées de la bouteille. %@" = "%1$@: its saves were not brought over from the bottle. %2$@";
+"Reprises de la bouteille" = "Brought over from the bottle";
+"%lld fichier(s), bouteille « %@ »" = "%1$lld file(s), “%2$@” bottle";
 "Déjà sur ce Mac : à reprendre sans retélécharger" = "Already on this Mac: take over without re-downloading";
 "À télécharger" = "To download";
 

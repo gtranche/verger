@@ -63,6 +63,9 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
     public let backup: Side?
     /// Copies de precaution gardees avant chaque ecrasement.
     public let history: Int
+    /// Ce que `cidre import` a ramene de la bouteille d'ou vient le jeu
+    /// (`"reprise"`). `nil` : le jeu ne vient pas d'une bouteille, ou Cidre plus ancien.
+    public let imported: SavesImport?
 
     /// Steam synchronise ce jeu lui-meme (par l'API ou par le dossier macOS lie).
     public var syncedBySteam: Bool { sync == "steam_api" || sync == "steam_macos" }
@@ -79,6 +82,7 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
         case local
         case backup = "sauvegarde"
         case history = "historique"
+        case imported = "reprise"
     }
 
     public init(from decoder: Decoder) throws {
@@ -94,6 +98,110 @@ public struct SaveStatus: Decodable, Equatable, Sendable {
         local = try c.decodeIfPresent(Side.self, forKey: .local)
         backup = try c.decodeIfPresent(Side.self, forKey: .backup)
         history = try c.decodeIfPresent(Int.self, forKey: .history) ?? 0
+        imported = try c.decodeIfPresent(SavesImport.self, forKey: .imported)
+    }
+}
+
+/// Les sauvegardes qu'un jeu repris d'une bouteille CrossOver, Whisky ou Heroic
+/// y avait laissees, et ce que Cidre en a ramene : `"reprise_sauvegardes"` de
+/// `cidre import --json`, `"reprise"` de `cidre saves --json`.
+public struct SavesImport: Decodable, Equatable, Sendable {
+    public enum State: String, Sendable {
+        /// Des fichiers ont ete ramenes (`files`, dont `replaced`).
+        case copied = "copie"
+        /// Rien a ramener : identiques, ou plus recents sur ce Mac (`kept`).
+        case upToDate = "a_jour"
+        /// Steam Cloud les detient (API de Steam) : rien n'est copie.
+        case steam
+        /// Le jeu les range dans son propre dossier : elles sont venues avec lui.
+        case withGame = "avec_le_jeu"
+        /// La bouteille n'en a pas.
+        case none = "absentes"
+        /// Cidre ne sait pas ou ce jeu les range.
+        case notFound = "introuvable"
+        /// Pas ramenees (disque C: de Cidre absent, bouteille disparue) : `message` dit pourquoi.
+        case failed = "erreur"
+        case unknown
+    }
+
+    public let state: State
+    /// Fichiers ecrits sur ce Mac.
+    public let files: Int
+    /// Parmi eux, ceux qui ont remplace une version plus ancienne (gardee dans l'historique).
+    public let replaced: Int
+    /// Fichiers plus recents sur ce Mac, laisses tels quels.
+    public let kept: Int
+    /// L'outil de la bouteille : "crossover", "whisky", "heroic".
+    public let origin: String?
+    public let bottle: String?
+    /// Le dossier de la bouteille, et celui ou les fichiers sont arrives.
+    public let from: String?
+    public let to: String?
+    /// La phrase de Cidre, en francais.
+    public let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case state = "etat"
+        case files = "fichiers"
+        case replaced = "remplaces"
+        case kept = "gardes"
+        case origin = "origine"
+        case bottle = "bouteille"
+        case from = "depuis"
+        case to = "vers"
+        case message
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        state = State(rawValue: try c.decodeIfPresent(String.self, forKey: .state) ?? "") ?? .unknown
+        files = try c.decodeIfPresent(Int.self, forKey: .files) ?? 0
+        replaced = try c.decodeIfPresent(Int.self, forKey: .replaced) ?? 0
+        kept = try c.decodeIfPresent(Int.self, forKey: .kept) ?? 0
+        origin = try c.decodeIfPresent(String.self, forKey: .origin)
+        bottle = try c.decodeIfPresent(String.self, forKey: .bottle)
+        from = try c.decodeIfPresent(String.self, forKey: .from)
+        to = try c.decodeIfPresent(String.self, forKey: .to)
+        message = try c.decodeIfPresent(String.self, forKey: .message)
+    }
+
+    /// Ce qu'il faut en dire au joueur, en une ligne, apres « Reprendre ».
+    public func notice(game: String) -> String {
+        switch state {
+        case .copied:
+            L10n.format("%@ : %lld fichier(s) de sauvegarde ramené(s) de la bouteille « %@ ».", game, files, bottle ?? "")
+        case .upToDate:
+            L10n.format("%@ : rien à ramener, les sauvegardes de ce Mac sont identiques à celles de la bouteille, ou plus récentes.", game)
+        case .steam:
+            L10n.format("%@ : Steam Cloud synchronise déjà ses sauvegardes, rien n'a été copié.", game)
+        case .withGame:
+            L10n.format("%@ : ses sauvegardes sont dans le dossier du jeu, elles sont venues avec lui.", game)
+        case .none:
+            L10n.format("%@ : aucune sauvegarde de ce jeu dans la bouteille « %@ ».", game, bottle ?? "")
+        case .notFound:
+            L10n.format("%@ : sauvegardes non trouvées dans la bouteille « %@ » (Cidre ne sait pas où ce jeu les range).", game, bottle ?? "")
+        case .failed, .unknown:
+            L10n.format("%@ : ses sauvegardes n'ont pas été ramenées de la bouteille. %@", game, message ?? "")
+        }
+    }
+}
+
+/// Ce que rend `cidre import <appid> --json` : la fiche du jeu repris, et ce
+/// qu'il est advenu de ses sauvegardes (`nil` avec un Cidre plus ancien).
+public struct ImportResult: Decodable, Sendable {
+    public let saves: SavesImport?
+
+    enum CodingKeys: String, CodingKey {
+        case saves = "reprise_sauvegardes"
+    }
+
+    public init(saves: SavesImport? = nil) {
+        self.saves = saves
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        saves = try? c.decodeIfPresent(SavesImport.self, forKey: .saves)
     }
 }
 

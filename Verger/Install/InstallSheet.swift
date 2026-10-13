@@ -56,6 +56,20 @@ struct InstallSheet: View {
                 Divider()
             }
             content
+            // apres « Reprendre » : ce qu'il est advenu des sauvegardes du jeu
+            if let notice = library.importNotice {
+                Divider()
+                Label {
+                    Text(verbatim: notice).fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "tray.and.arrow.down")
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
         }
         .frame(width: 560, height: 560)
         .sheet(isPresented: $loggingIn, onDismiss: { Task { await library.checkSession() } }) {

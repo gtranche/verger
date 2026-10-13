@@ -88,6 +88,8 @@ final class LibraryModel {
     private(set) var downloads: [Int: DownloadProgress] = [:]
     /// Les reprises de bouteille en cours (quelques secondes).
     private(set) var importing: Set<Int> = []
+    /// Ce qu'il est advenu des sauvegardes du dernier jeu repris, en une ligne.
+    private(set) var importNotice: String?
     private var downloadTasks: [Int: Task<Void, Never>] = [:]
 
     /// L'etat du runtime Cidre (`cidre status`), et la release plus recente s'il y en a une.
@@ -769,9 +771,10 @@ final class LibraryModel {
     func importGame(appid: Int) {
         guard let cli, !importing.contains(appid) else { return }
         importing.insert(appid)
+        let name = owned.first { $0.appid == appid }?.name ?? String(appid)
         Task {
             do {
-                try await cli.importGame(appid: appid)
+                importNotice = try await cli.importGame(appid: appid).saves?.notice(game: name)
             } catch {
                 lastError = error.localizedDescription
             }
