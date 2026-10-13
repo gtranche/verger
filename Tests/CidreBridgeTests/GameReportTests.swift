@@ -141,7 +141,7 @@ import Testing
     let issue = IssueReport(repository: "gtranche/cidre", title: "t", text: "texte", logTitle: "Diagnostic", log: lines,
                             template: "rapport-jeu.yml", field: "rapport", truncation: .head)
     let url = issue.url()
-    #expect(url.absoluteString.utf8.count <= 7000)
+    #expect(IssueReport.length(of: url, throughLogin: true) <= IssueReport.maxURLLength)
     let body = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "rapport" }?.value)
     // le DEBUT est garde, la fin coupee, et la coupure est marquee
     #expect(body.contains("ligne 1 :") && !body.contains("ligne 300 :") && body.hasSuffix("[…]\n```\n"))

@@ -131,11 +131,8 @@ public struct GameReport: Equatable, Sendable {
     public static let issueTemplate = "rapport-jeu.yml"
     public static let issueField = "rapport"
 
-    /// La plus longue adresse qu'on presente a GitHub, redirection de connexion
-    /// comprise (`IssueReport.length(of:throughLogin:)`). Mesure sans session
-    /// le 2026-10-13 : la page repond jusqu'a ~7 020 octets, rend une erreur
-    /// 500 au-dela et « 414 URI Too Long » apres ~8 200. On garde une marge.
-    public static let maxURLLength = 6800
+    /// La plus longue adresse qu'on presente a GitHub : celle de tout incident.
+    public static let maxURLLength = IssueReport.maxURLLength
 
     /// L'incident GitHub pret a partir : titre fixe (« Rapport de jeu : <nom>
     /// (<appid>) », en francais quelle que soit la langue de Verger, pour le tri

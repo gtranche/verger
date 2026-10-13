@@ -41,7 +41,14 @@ import Testing
     #expect(report.body().contains("ligne 1 :") && report.body().contains("ligne 400 :"))
 
     let url = report.url()
-    #expect(url.absoluteString.utf8.count <= 7000)
+    // la longueur comptee est celle de la redirection de connexion (/login?return_to=<adresse encodee
+    // une seconde fois>) : un utilisateur pas encore connecte a GitHub garde son texte. Sur github.com,
+    // le 2026-10-13, une adresse de plus de ~7 020 octets rend une erreur 500.
+    #expect(IssueReport.length(of: url, throughLogin: true) <= IssueReport.maxURLLength)
+    #expect(IssueReport.length(of: url, throughLogin: true) > IssueReport.maxURLLength * 3 / 4)
+    #expect(IssueReport.length(of: url) < IssueReport.length(of: url, throughLogin: true))
+    // l'ancienne mesure (7 000 octets sur l'adresse directe) debordait une fois passee par la connexion
+    #expect(IssueReport.length(of: report.url(maxLength: 7000, throughLogin: false), throughLogin: true) > 7040)
     #expect(url.absoluteString.hasPrefix("https://github.com/gtranche/cidre/issues/new?"))
     let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
     #expect(items.first { $0.name == "title" }?.value == "Dead Cells : écran noir + son")
@@ -88,6 +95,6 @@ func leVraiJournalEstNettoye() async throws {
         let url = IssueReport(repository: "gtranche/cidre", title: "essai", text: "texte", logTitle: "Fin du journal", log: clean).url()
         print("\(id) : \(raw.count) lignes, \(raw.joined().utf8.count / 1024) Kio ; adresse de \(url.absoluteString.utf8.count) octets ; fuites : \(leaks.count)")
         #expect(leaks.isEmpty, "reste dans le journal de \(id)")
-        #expect(url.absoluteString.utf8.count <= 7000)
+        #expect(IssueReport.length(of: url, throughLogin: true) <= IssueReport.maxURLLength)
     }
 }

@@ -174,6 +174,12 @@ public struct IssueReport: Equatable, Sendable {
         address([URLQueryItem(name: "title", value: title), URLQueryItem(name: field, value: body(logLines: logLines))])
     }
 
+    /// La plus longue adresse qu'on presente a GitHub, redirection de connexion
+    /// comprise (`length(of:throughLogin:)`). Mesure sans session le
+    /// 2026-10-13 : la page repond jusqu'a ~7 020 octets, rend une erreur 500
+    /// au-dela et « 414 URI Too Long » apres ~8 200. On garde une marge.
+    public static let maxURLLength = 6800
+
     /// La longueur d'une adresse telle que GitHub la recoit. Un utilisateur qui
     /// n'est pas connecte dans son navigateur est renvoye vers
     /// `/login?return_to=<adresse>`, ou l'adresse est encodee une seconde fois
@@ -191,8 +197,10 @@ public struct IssueReport: Equatable, Sendable {
 
     /// L'adresse de la page « nouvel incident » remplie. Une adresse ne porte que
     /// quelques kilo-octets : on y met autant de lignes de la fin du journal
-    /// qu'il en tient, le reste part en piece jointe.
-    public func url(maxLength: Int = 7000, throughLogin: Bool = false) -> URL {
+    /// qu'il en tient, le reste part en piece jointe. La longueur comptee est,
+    /// par defaut, celle de la redirection de connexion : l'incident d'un
+    /// utilisateur qui n'est pas encore connecte a GitHub arrive entier lui aussi.
+    public func url(maxLength: Int = IssueReport.maxURLLength, throughLogin: Bool = true) -> URL {
         var lines = log.count
         while true {
             let url = address(logLines: lines)
@@ -217,7 +225,7 @@ public struct IssueReport: Equatable, Sendable {
         case clipboard(URL)
     }
 
-    public func delivery(maxLength: Int = 7000, throughLogin: Bool = false) -> Delivery {
+    public func delivery(maxLength: Int = IssueReport.maxURLLength, throughLogin: Bool = true) -> Delivery {
         let url = url(maxLength: maxLength, throughLogin: throughLogin)
         if Self.length(of: url, throughLogin: throughLogin) > maxLength { return .clipboard(shortURL) }
         return .address(url, complete: url == address(logLines: log.count))
