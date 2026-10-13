@@ -7,9 +7,14 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
     case invalidOutput(command: String, underlying: String)
     /// SteamCMD n'a pas de session memorisee : il faut se connecter (`cidre login`).
     case steamSessionMissing
+    /// `cidre play` refuse de lancer un jeu dont une mise a jour tourne deja
+    /// ailleurs (code 4) : il serait pris a moitie remplace.
+    case updateRunning
 
     public var errorDescription: String? {
         switch self {
+        case .updateRunning:
+            return L10n.string("Une mise à jour de ce jeu est déjà en cours : attends sa fin, puis relance-le.")
         case let .commandFailed(command, status, message):
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return L10n.format("`cidre %@` a échoué (code %lld)", command, Int(status)) + (detail.isEmpty ? "." : " : \(detail)")
@@ -133,6 +138,74 @@ public struct CidreCLI: Sendable {
     /// de la commande va dans `log`.
     public func play(id: String, log: URL? = nil) async throws {
         try await runLogged(["play", id], log: log)
+    }
+
+    /// `cidre play <id> --json` : avant de lancer un jeu du dossier Cidre, Cidre
+    /// le met a jour si Steam publie un build plus recent, et le raconte par
+    /// `onEvent` (verification, avancement, echec et pourquoi, puis lancement).
+    /// `skipUpdate` : jouer tout de suite (`--sans-maj`). Rend la main quand la
+    /// commande se termine, comme `play(id:log:)`. Annuler la tache arrete la
+    /// commande : pendant la mise a jour, SteamCMD s'arrete avec elle et le jeu
+    /// n'est pas lance. A n'employer qu'avec un Cidre qui connait `--json` ici
+    /// (`LaunchOptions.updateBeforeLaunch` non nul) : un plus ancien laisserait
+    /// le jeu ecrire dans un tube que Verger ferme en quittant.
+    public func play(
+        id: String, log: URL? = nil, skipUpdate: Bool = false,
+        onEvent: @escaping @Sendable (PlayEvent) -> Void
+    ) async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [executable.path, "play", id, "--json"] + (skipUpdate ? ["--sans-maj"] : [])
+        process.environment = environment
+        process.standardInput = FileHandle.nullDevice
+
+        // Le journal : ce que Cidre, SteamCMD puis le lanceur ecrivent a l'erreur.
+        var logHandle: FileHandle?
+        if let log {
+            try FileManager.default.createDirectory(at: log.deletingLastPathComponent(), withIntermediateDirectories: true)
+            FileManager.default.createFile(atPath: log.path, contents: nil)
+            logHandle = try FileHandle(forWritingTo: log)
+        }
+        defer { try? logHandle?.close() }
+        process.standardError = logHandle ?? FileHandle.nullDevice
+
+        // La sortie standard : des evenements, un objet JSON par ligne. Toute
+        // autre ligne rejoint le journal.
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        let lines = LineBuffer()
+        let sink = logHandle
+        let deliver: @Sendable (String) -> Void = { line in
+            if let event = PlayEvent.parse(line: line) {
+                onEvent(event)
+            } else if let sink, !line.isEmpty {
+                _ = try? sink.seekToEnd()
+                try? sink.write(contentsOf: Data((line + "\n").utf8))
+            }
+        }
+        let reader = PipeReader(pipe) { data in
+            for line in lines.append(data) { deliver(line) }
+        }
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                process.terminationHandler = { _ in continuation.resume() }
+                do { try process.run() } catch { continuation.resume(throwing: error) }
+            }
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+        reader.finish()
+        if let rest = lines.flush() { deliver(rest) }
+
+        try Task.checkCancellation()
+        // code 4 : une mise a jour de ce jeu tourne deja (autre commande)
+        if process.terminationStatus == 4 { throw CidreError.updateRunning }
+        guard process.terminationStatus == 0 else {
+            throw CidreError.commandFailed(
+                command: "play \(id)", status: process.terminationStatus,
+                message: log.map { L10n.format("voir %@", $0.path) } ?? "")
+        }
     }
 
     // MARK: Options de lancement
@@ -376,6 +449,32 @@ private final class DataBox: @unchecked Sendable {
 
     func set(_ value: Data) { lock.lock(); data = value; lock.unlock() }
     func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
+}
+
+/// Decoupe en lignes une sortie qui arrive par morceaux.
+private final class LineBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var pending = Data()
+
+    /// Les lignes completes que ce morceau termine.
+    func append(_ data: Data) -> [String] {
+        lock.lock(); defer { lock.unlock() }
+        pending.append(data)
+        var lines: [String] = []
+        while let newline = pending.firstIndex(of: 0x0A) {
+            lines.append(String(decoding: pending[pending.startIndex..<newline], as: UTF8.self))
+            pending.removeSubrange(pending.startIndex...newline)
+        }
+        return lines
+    }
+
+    /// Ce qui reste a la fin, sans retour a la ligne.
+    func flush() -> String? {
+        lock.lock(); defer { lock.unlock() }
+        guard !pending.isEmpty else { return nil }
+        defer { pending.removeAll() }
+        return String(decoding: pending, as: UTF8.self)
+    }
 }
 
 /// La fin de la sortie d'une commande longue, pour l'afficher si elle echoue.

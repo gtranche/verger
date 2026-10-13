@@ -10,6 +10,10 @@ struct GameCard: View {
     var download: DownloadProgress?
     /// Une version plus recente du jeu est publiee.
     var updateAvailable = false
+    /// Les deux builds, pour qui se demande pourquoi le jeu est dit « pas a jour ».
+    var updateHelp: String?
+    /// « Jouer » met d'abord le jeu a jour.
+    var updatesFirst = false
     var cancelDownload: () -> Void = {}
     /// Forcer l'arret du jeu en cours ; `nil` quand ce n'est pas possible (jeu natif).
     var stop: (() -> Void)?
@@ -40,6 +44,7 @@ struct GameCard: View {
                             .padding(.vertical, 2)
                             .foregroundStyle(.orange)
                             .background(Color.orange.opacity(0.15), in: Capsule())
+                            .help(updateHelp ?? "")
                     } else {
                         Text(L10n.bytes(game.sizeBytes))
                             .font(.caption)
@@ -86,6 +91,7 @@ struct GameCard: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
+            .help(updatesFirst ? L10n.string("Une mise à jour est disponible : elle est installée, puis le jeu est lancé.") : "")
             .padding(10)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
         }

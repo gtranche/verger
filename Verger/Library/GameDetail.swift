@@ -52,26 +52,8 @@ struct GameDetail: View {
 
             // Jouer, arreter, mettre a jour : sous la main, avant les reglages.
             Section {
-                if let appid = game.appid, library.downloads[appid] == nil, library.updates[appid] != nil {
-                    // Un jeu du dossier Cidre, c'est Cidre qui le met a jour ; un
-                    // jeu du client Steam, c'est Steam.
-                    if game.source == .cidre {
-                        Button {
-                            library.download(appid: appid)
-                        } label: {
-                            Label("Mettre à jour", systemImage: "arrow.down.circle")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .controlSize(.large)
-                        .disabled(library.running.contains(game.id))
-                    } else {
-                        Label("Une mise à jour est disponible : Steam l'installe.", systemImage: "arrow.down.circle")
-                            .font(.callout)
-                            .foregroundStyle(.orange)
-                        Button("Ouvrir les téléchargements de Steam") { library.openSteamDownloads() }
-                            .frame(maxWidth: .infinity)
-                    }
-                }
+                let update = game.appid.flatMap { library.updates[$0] }
+                let isRunning = library.running.contains(game.id)
                 if let appid = game.appid, let progress = library.downloads[appid] {
                     DownloadStatus(progress: progress) { library.cancelDownload(appid: appid) }
                 } else if let appid = game.appid, game.source == .cidre, !game.installed {
@@ -83,16 +65,64 @@ struct GameDetail: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                } else {
+                } else if let appid = game.appid, let update, !isRunning, library.playPlan(for: game) == .updateThenPlay {
+                    // Une version plus recente est publiee : « Jouer » l'installe
+                    // d'abord. Jouer tout de suite reste possible, a cote.
                     Button {
                         library.play(game)
                     } label: {
-                        Label(library.running.contains(game.id) ? "En cours…" : "Jouer", systemImage: "play.fill")
+                        Label("Mettre à jour et jouer", systemImage: "arrow.down.circle.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .disabled(!game.installed || library.running.contains(game.id))
+                    Text("Build installé : \(String(update.installedBuild)) · publié : \(String(update.availableBuild))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                    // la derniere tentative a echoue : pourquoi, et quoi faire
+                    if library.updateNotices[appid] == nil, update.status?.state == .failed,
+                       let explanation = update.status?.explanation {
+                        notice(explanation)
+                    }
+                    Button("Jouer sans mettre à jour") { library.play(game, skipUpdate: true) }
+                        .frame(maxWidth: .infinity)
+                        .help("Lance la version installée. La mise à jour sera proposée à nouveau au prochain lancement.")
+                    Button("Mettre à jour sans jouer") { library.download(appid: appid) }
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Button {
+                        library.play(game)
+                    } label: {
+                        Label(isRunning ? "En cours…" : "Jouer", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(!game.installed || isRunning)
+
+                    // Une mise a jour connue que « Jouer » n'installe pas : un jeu
+                    // du dossier Cidre dont l'option est coupee (ou epingle sur une
+                    // branche), ou un jeu du client Steam, que Steam met a jour.
+                    if let appid = game.appid, let update {
+                        if game.source == .cidre {
+                            notice(update.status?.explanation ?? L10n.string("Une mise à jour est disponible."))
+                            // (un jeu epingle sur une branche beta : la branche publique n'est pas la sienne)
+                            if update.status?.reason != .branch {
+                                Button("Mettre à jour") { library.download(appid: appid) }
+                                    .frame(maxWidth: .infinity)
+                                    .disabled(isRunning)
+                            }
+                        } else {
+                            notice(L10n.string("Une mise à jour est disponible : Steam l'installe."))
+                            Button("Ouvrir les téléchargements de Steam") { library.openSteamDownloads() }
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+                // la mise a jour d'avant lancement n'a pas pu se faire : pourquoi
+                if let appid = game.appid, let text = library.updateNotices[appid] {
+                    notice(text)
                 }
 
                 // Un jeu lance par Cidre qui ne repond plus, ou dont la fenetre
@@ -214,6 +244,17 @@ struct GameDetail: View {
                 self.error = error.localizedDescription
             }
         }
+    }
+
+    /// Une remarque sur la mise a jour du jeu, sous le bouton.
+    private func notice(_ text: String) -> some View {
+        Label {
+            Text(verbatim: text).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "arrow.down.circle")
+        }
+        .font(.callout)
+        .foregroundStyle(.orange)
     }
 
     private func chooseCoverFile() {

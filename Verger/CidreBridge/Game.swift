@@ -84,11 +84,15 @@ public struct GameInfo: Decodable, Sendable {
     public let options: LaunchOptions
     /// Les options que l'utilisateur a lui-meme reglees pour ce jeu.
     public let overridden: Set<LaunchOptions.Key>
+    /// Ou en est la mise a jour du jeu (`"maj"`), d'apres ce que Cidre sait deja.
+    /// `nil` : jeu que Cidre ne met pas a jour lui-meme, ou Cidre <= 1.5.9.
+    public let update: UpdateStatus?
 
     enum CodingKeys: String, CodingKey {
         case savesSynced = "sauvegardes"
         case options
         case overrides = "options_perso"
+        case update = "maj"
     }
 
     public init(from decoder: Decoder) throws {
@@ -98,6 +102,7 @@ public struct GameInfo: Decodable, Sendable {
         options = try c.decodeIfPresent(LaunchOptions.self, forKey: .options) ?? LaunchOptions()
         let overrides = try c.decodeIfPresent([String: OptionValue].self, forKey: .overrides) ?? [:]
         overridden = Set(overrides.keys.compactMap(LaunchOptions.Key.init(rawValue:)))
+        update = try c.decodeIfPresent(UpdateStatus.self, forKey: .update)
     }
 
     /// Une valeur d'option, dont seul le nom de la cle nous interesse ici.
@@ -141,6 +146,10 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
     /// La langue du jeu : `auto` (suivre macOS et Steam) ou un code a deux
     /// lettres. `nil` : ce Cidre ne connait pas l'option.
     public var language: String?
+    /// Mettre le jeu a jour avant de le lancer quand Steam publie un build plus
+    /// recent (jeu du dossier Cidre). `nil` : ce Cidre ne sait pas le faire --
+    /// ni l'option, ni `cidre play --json`.
+    public var updateBeforeLaunch: Bool?
 
     public init() {}
 
@@ -159,6 +168,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         if let d3d11 { parts.append("d3d11=\(d3d11)") }
         if let metalfx { parts.append("metalfx=\(metalfx)") }
         if let language { parts.append("langue=\(language)") }
+        if let updateBeforeLaunch { parts.append("maj_avant_lancement=\(updateBeforeLaunch)") }
         return parts.joined(separator: " ")
     }
 
@@ -176,6 +186,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         case d3d11
         case metalfx
         case language = "langue"
+        case updateBeforeLaunch = "maj_avant_lancement"
     }
 
     typealias CodingKeys = Key
@@ -198,6 +209,7 @@ public struct LaunchOptions: Decodable, Equatable, Sendable {
         d3d11 = try c.decodeIfPresent(String.self, forKey: .d3d11)
         metalfx = try c.decodeIfPresent(Bool.self, forKey: .metalfx)
         language = try c.decodeIfPresent(String.self, forKey: .language)
+        updateBeforeLaunch = try c.decodeIfPresent(Bool.self, forKey: .updateBeforeLaunch)
     }
 }
 
@@ -278,12 +290,205 @@ public struct GameUpdate: Decodable, Equatable, Sendable {
     public let installedBuild: Int
     public let availableBuild: Int
     public let upToDate: Bool
+    /// Qui met le jeu a jour : `cidre` (jeu du dossier Cidre) ou `steam` (le
+    /// client Steam). `nil` : Cidre <= 1.5.9.
+    public let source: String?
+    /// Ou en est la mise a jour (jeu du dossier Cidre). `nil` : Cidre <= 1.5.9.
+    public let status: UpdateStatus?
+
+    /// Un build plus recent est publie. Les builds de Steam ne font que
+    /// croitre : un build installe en avance sur le build « publie » trahit une
+    /// fiche en retard (cache), pas un jeu perime -- un Cidre <= 1.5.9 le
+    /// donnait pourtant « pas a jour » jusqu'a une demi-heure apres un `cidre dl`.
+    public var needsUpdate: Bool { !upToDate && availableBuild > installedBuild }
 
     enum CodingKeys: String, CodingKey {
-        case appid
+        case appid, source
         case installedBuild = "build_installe"
         case availableBuild = "build_disponible"
         case upToDate = "a_jour"
+        case state = "etat"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        appid = try c.decode(Int.self, forKey: .appid)
+        installedBuild = try c.decode(Int.self, forKey: .installedBuild)
+        availableBuild = try c.decode(Int.self, forKey: .availableBuild)
+        upToDate = try c.decode(Bool.self, forKey: .upToDate)
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        // l'etat est ecrit a plat, a cote des builds
+        status = c.contains(.state) ? try UpdateStatus(from: decoder) : nil
+    }
+}
+
+/// Ou en est la mise a jour d'un jeu du dossier Cidre : le meme objet dans
+/// `cidre updates --json` (a plat), `cidre info --json` (`"maj"`) et les
+/// evenements de `cidre play --json`.
+public struct UpdateStatus: Decodable, Equatable, Sendable {
+    public enum State: String, Sendable {
+        case upToDate = "a_jour"
+        /// Un build plus recent est publie.
+        case available = "disponible"
+        /// Son telechargement tourne (`progress`).
+        case running = "en_cours"
+        /// La derniere tentative a echoue (`reason`) ; le build reste a installer.
+        case failed = "echouee"
+        /// Un build plus recent existe, et on n'y va pas (`reason`).
+        case ignored = "ignoree"
+        case unknown = "inconnu"
+        /// `cidre play` : Cidre demande a Steam s'il y a plus recent.
+        case checking = "verification"
+        /// `cidre play` : la mise a jour vient d'etre faite.
+        case done = "faite"
+    }
+
+    /// Pourquoi une mise a jour a echoue, est laissee de cote, ou n'a pas pu
+    /// etre verifiee.
+    public enum Reason: String, Sendable {
+        case session, steamcmd
+        case disk = "disque"
+        case network = "reseau"
+        case license = "licence"
+        case account = "compte"
+        case interrupted = "interrompue"
+        case option
+        case branch = "branche"
+        case noEffect = "sans_effet"
+        case request = "demande"
+        case offline = "hors_ligne"
+        case slow = "trop_lent"
+        case steamcmdMissing = "steamcmd_absent"
+        case noBuild = "sans_build"
+        case neverChecked = "jamais_verifie"
+        /// Une raison que ce Verger ne connait pas (Cidre plus recent).
+        case other = "autre"
+    }
+
+    public let state: State
+    public let installedBuild: Int?
+    public let availableBuild: Int?
+    public let reason: Reason?
+    /// Le message de Cidre, tel qu'il l'ecrit au terminal.
+    public let message: String?
+    /// L'avancement du telechargement en cours.
+    public let progress: DownloadProgress?
+    /// L'option `maj_avant_lancement` du jeu, resolue.
+    public let beforeLaunch: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case state = "etat"
+        case installedBuild = "build_installe"
+        case availableBuild = "build_disponible"
+        case reason = "raison"
+        case message
+        case percent = "avancement"
+        case doneBytes = "octets"
+        case totalBytes = "total"
+        case beforeLaunch = "avant_lancement"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // un etat inconnu (Cidre plus recent) ne doit pas faire tomber la liste
+        state = State(rawValue: try c.decode(String.self, forKey: .state)) ?? .unknown
+        installedBuild = try c.decodeIfPresent(Int.self, forKey: .installedBuild)
+        availableBuild = try c.decodeIfPresent(Int.self, forKey: .availableBuild)
+        reason = try c.decodeIfPresent(String.self, forKey: .reason).map { Reason(rawValue: $0) ?? .other }
+        message = try c.decodeIfPresent(String.self, forKey: .message)
+        beforeLaunch = try c.decodeIfPresent(Bool.self, forKey: .beforeLaunch)
+        if let percent = try c.decodeIfPresent(Double.self, forKey: .percent) {
+            progress = DownloadProgress(
+                fraction: min(max(percent / 100, 0), 1),
+                doneBytes: try c.decodeIfPresent(Int64.self, forKey: .doneBytes) ?? 0,
+                totalBytes: try c.decodeIfPresent(Int64.self, forKey: .totalBytes) ?? 0)
+        } else {
+            progress = nil
+        }
+    }
+
+    /// Ce qu'on dit au joueur d'une mise a jour qui n'a pas ete faite : la
+    /// cause probable, et quoi faire. `nil` quand il n'y a rien a dire.
+    public var explanation: String? {
+        switch (state, reason) {
+        case (.failed, .session):
+            L10n.string("Mise à jour impossible : la session Steam n'est pas mémorisée. Connecte-toi (bouton +, « Connexion à Steam… »), puis relance le jeu.")
+        case (.failed, .disk):
+            L10n.string("Mise à jour impossible : il n'y a plus assez de place sur le disque des jeux. Libère de la place, puis relance le jeu.")
+        case (.failed, .network):
+            L10n.string("Mise à jour interrompue : la connexion à Steam a été perdue. Elle reprendra où elle en était au prochain lancement.")
+        case (.failed, .license):
+            L10n.string("Mise à jour impossible : ce compte Steam n'a pas ce jeu. Vérifie le compte connecté (Réglages → Steam).")
+        case (.failed, .account):
+            L10n.string("Mise à jour impossible : aucun compte Steam n'est connu. Connecte-toi (bouton +, « Connexion à Steam… »).")
+        case (.failed, .interrupted):
+            L10n.string("Mise à jour interrompue avant la fin. Elle reprendra où elle en était au prochain lancement.")
+        case (.failed, _):
+            L10n.string("La mise à jour a échoué : SteamCMD n'a pas pu la terminer. Relance le jeu pour réessayer.")
+                + (message.map { "\n\($0)" } ?? "")
+        case (.ignored, .option):
+            L10n.string("Une mise à jour est disponible ; ce jeu n'est pas mis à jour au lancement (option « Mise à jour avant de jouer » coupée).")
+        case (.ignored, .branch):
+            L10n.string("Une mise à jour est disponible sur la branche publique ; ce jeu suit une branche bêta de Steam et n'est pas mis à jour au lancement.")
+        case (.ignored, .noEffect):
+            L10n.string("Steam annonce une version plus récente, mais ne la donne pas à ce compte : la mise à jour a déjà été tentée, sans effet.")
+        case (.ignored, _):
+            nil
+        case (.unknown, .offline):
+            L10n.string("Mise à jour non vérifiée : Steam n'a pas répondu (hors ligne ?).")
+        case (.unknown, .slow):
+            L10n.string("Mise à jour non vérifiée : Steam met trop de temps à répondre. Sa réponse servira au prochain lancement.")
+        case (.unknown, .steamcmdMissing):
+            L10n.string("Mise à jour non vérifiée : SteamCMD est introuvable. Réinstalle Cidre depuis les Réglages.")
+        default:
+            nil
+        }
+    }
+}
+
+/// Ce que `cidre play <id> --json` ecrit sur sa sortie standard avant de lancer
+/// le jeu, un objet JSON par ligne.
+public enum PlayEvent: Equatable, Sendable {
+    /// Ou en est la mise a jour d'avant lancement.
+    case update(UpdateStatus)
+    /// Le jeu part : plus rien ne suivra.
+    case launching
+
+    /// L'evenement que porte une ligne ; `nil` pour toute autre ligne (un Cidre
+    /// plus ancien ecrit ici la sortie du lanceur).
+    public static func parse(line: String) -> PlayEvent? {
+        let line = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard line.hasPrefix("{"), let data = line.data(using: .utf8),
+              let kind = try? JSONDecoder().decode(Kind.self, from: data) else { return nil }
+        switch kind.name {
+        case "lancement": return .launching
+        case "maj": return (try? JSONDecoder().decode(UpdateStatus.self, from: data)).map(PlayEvent.update)
+        default: return nil
+        }
+    }
+
+    private struct Kind: Decodable {
+        let name: String
+        enum CodingKeys: String, CodingKey { case name = "evenement" }
+    }
+}
+
+/// Ce que fait le bouton « Jouer » d'un jeu, d'apres ce qu'on sait de sa mise a jour.
+public enum PlayPlan: Equatable, Sendable {
+    /// Lancer : rien a mettre a jour, ou ce n'est pas a Cidre de le faire.
+    case play
+    /// Mettre a jour, puis lancer ; « Jouer sans mettre a jour » reste offert.
+    case updateThenPlay
+
+    public static func plan(for game: Game, update: GameUpdate?) -> PlayPlan {
+        // Un jeu du client Steam, c'est Steam qui le met a jour (et il le fait
+        // de lui-meme avant de le lancer) ; un jeu hors Steam n'a pas de build.
+        guard game.source == .cidre, game.installed, let update, update.needsUpdate else { return .play }
+        if let status = update.status {
+            // laissee de cote : option coupee, branche beta, deja tentee sans effet
+            if status.state == .ignored || status.beforeLaunch == false { return .play }
+        }
+        return .updateThenPlay
     }
 }
 

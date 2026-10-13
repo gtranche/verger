@@ -216,6 +216,10 @@ struct LibraryView: View {
                             isSelected: selection == game.id,
                             download: game.appid.flatMap { library.downloads[$0] },
                             updateAvailable: game.appid.map { library.updates[$0] != nil } ?? false,
+                            updateHelp: game.appid.flatMap { library.updates[$0] }.map {
+                                L10n.format("Build installé : %@ · publié : %@", String($0.installedBuild), String($0.availableBuild))
+                            },
+                            updatesFirst: library.playPlan(for: game) == .updateThenPlay,
                             cancelDownload: { game.appid.map(library.cancelDownload) },
                             stop: game.launch == .cidre ? { stopping = game } : nil,
                             play: { library.play(game) }

@@ -17,10 +17,17 @@ struct LaunchOptionsEditor: View {
     let scope: Scope
     let options: LaunchOptions
     let overridden: Set<LaunchOptions.Key>
+    /// La mise a jour avant de jouer ne concerne que les jeux du dossier Cidre
+    /// (et le reglage general, qu'ils suivent).
+    var showsUpdateOption = true
     /// Applique une commande a Cidre, puis recharge les options affichees.
     let apply: (@escaping @Sendable (CidreCLI) async throws -> Void) -> Void
 
     var body: some View {
+        if showsUpdateOption, let updateBeforeLaunch = options.updateBeforeLaunch {
+            toggle("Mise à jour avant de jouer", .updateBeforeLaunch, isOn: updateBeforeLaunch,
+                   help: "Quand Steam publie une nouvelle version d'un jeu installé par Cidre, « Jouer » l'installe d'abord. À couper pour rester sur la version installée : la mise à jour reste proposée dans la fiche du jeu.")
+        }
         // L'interrupteur dit ce que le joueur gagne ; Cidre stocke l'inverse
         // (tso = true : ordre memoire strict).
         toggle("Performance CPU", .tso, isOn: !options.tso, stored: { !$0 },
@@ -191,7 +198,8 @@ struct LaunchOptionsSection: View {
             if let info {
                 LaunchOptionsEditor(
                     targetID: game.id, scope: .game,
-                    options: info.options, overridden: info.overridden
+                    options: info.options, overridden: info.overridden,
+                    showsUpdateOption: game.source == .cidre
                 ) { change in
                     let id = game.id
                     Task {

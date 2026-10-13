@@ -372,3 +372,30 @@
 "Déjà sur ce Mac : à reprendre sans retélécharger" = "Already on this Mac: take over without re-downloading";
 "À télécharger" = "To download";
 
+
+/* Mise a jour d'un jeu avant de le lancer */
+"Mettre à jour et jouer" = "Update and Play";
+"Jouer sans mettre à jour" = "Play Without Updating";
+"Mettre à jour sans jouer" = "Update Without Playing";
+"Build installé : %@ · publié : %@" = "Installed build: %1$@ · published: %2$@";
+"Lance la version installée. La mise à jour sera proposée à nouveau au prochain lancement." = "Launches the installed version. The update will be offered again at the next launch.";
+"Une mise à jour est disponible." = "An update is available.";
+"Une mise à jour est disponible : elle est installée, puis le jeu est lancé." = "An update is available: it is installed first, then the game launches.";
+"La mise à jour a échoué : le jeu est lancé dans sa version installée." = "The update failed: the game launches in its installed version.";
+"Le jeu est lancé dans sa version installée." = "The game launches in its installed version.";
+"Une mise à jour de ce jeu est déjà en cours : attends sa fin, puis relance-le." = "An update of this game is already running: wait for it to finish, then launch the game again.";
+"Mise à jour impossible : la session Steam n'est pas mémorisée. Connecte-toi (bouton +, « Connexion à Steam… »), puis relance le jeu." = "Could not update: the Steam session is not remembered. Sign in (+ button, “Sign In to Steam…”), then launch the game again.";
+"Mise à jour impossible : il n'y a plus assez de place sur le disque des jeux. Libère de la place, puis relance le jeu." = "Could not update: there is not enough space left on the games disk. Free up some space, then launch the game again.";
+"Mise à jour interrompue : la connexion à Steam a été perdue. Elle reprendra où elle en était au prochain lancement." = "Update interrupted: the connection to Steam was lost. It will resume where it stopped at the next launch.";
+"Mise à jour impossible : ce compte Steam n'a pas ce jeu. Vérifie le compte connecté (Réglages → Steam)." = "Could not update: this Steam account does not own this game. Check the signed-in account (Settings → Steam).";
+"Mise à jour impossible : aucun compte Steam n'est connu. Connecte-toi (bouton +, « Connexion à Steam… »)." = "Could not update: no Steam account is known. Sign in (+ button, “Sign In to Steam…”).";
+"Mise à jour interrompue avant la fin. Elle reprendra où elle en était au prochain lancement." = "Update interrupted before it finished. It will resume where it stopped at the next launch.";
+"La mise à jour a échoué : SteamCMD n'a pas pu la terminer. Relance le jeu pour réessayer." = "The update failed: SteamCMD could not complete it. Launch the game again to retry.";
+"Une mise à jour est disponible ; ce jeu n'est pas mis à jour au lancement (option « Mise à jour avant de jouer » coupée)." = "An update is available; this game is not updated at launch (“Update Before Playing” is off).";
+"Une mise à jour est disponible sur la branche publique ; ce jeu suit une branche bêta de Steam et n'est pas mis à jour au lancement." = "An update is available on the public branch; this game follows a Steam beta branch and is not updated at launch.";
+"Steam annonce une version plus récente, mais ne la donne pas à ce compte : la mise à jour a déjà été tentée, sans effet." = "Steam advertises a newer version but does not deliver it to this account: the update was already attempted, to no effect.";
+"Mise à jour non vérifiée : Steam n'a pas répondu (hors ligne ?)." = "Update not checked: Steam did not answer (offline?).";
+"Mise à jour non vérifiée : Steam met trop de temps à répondre. Sa réponse servira au prochain lancement." = "Update not checked: Steam is taking too long to answer. Its answer will be used at the next launch.";
+"Mise à jour non vérifiée : SteamCMD est introuvable. Réinstalle Cidre depuis les Réglages." = "Update not checked: SteamCMD is missing. Reinstall Cidre from Settings.";
+"Mise à jour avant de jouer" = "Update Before Playing";
+"Quand Steam publie une nouvelle version d'un jeu installé par Cidre, « Jouer » l'installe d'abord. À couper pour rester sur la version installée : la mise à jour reste proposée dans la fiche du jeu." = "When Steam publishes a new version of a game installed by Cidre, “Play” installs it first. Turn off to stay on the installed version: the update is still offered in the game’s details.";

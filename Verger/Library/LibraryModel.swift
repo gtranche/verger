@@ -72,6 +72,18 @@ final class LibraryModel {
     private(set) var owned: [OwnedGame] = []
     /// Les jeux Steam installes dont une version plus recente est publiee, par appid.
     private(set) var updates: [Int: GameUpdate] = [:]
+    /// Quand `updates` a ete demande a Cidre pour la derniere fois.
+    private var lastUpdatesCheck = Date.distantPast
+    /// Ce qu'a donne la derniere mise a jour d'avant lancement quand elle n'a
+    /// pas ete faite (hors ligne, session absente, place...), par appid : le
+    /// jeu est parti dans sa version installee, la fiche dit pourquoi.
+    private(set) var updateNotices: [Int: String] = [:]
+    /// Les jeux que « Jouer » est en train de mettre a jour avant de les lancer.
+    private var updatingBeforeLaunch: Set<Int> = []
+    private var playTasks: [String: Task<Void, Never>] = [:]
+    /// Ce Cidre met-il a jour avant de lancer (`cidre play --json`, option
+    /// `maj_avant_lancement`) ? `nil` : pas encore demande.
+    private var updatesBeforeLaunch: Bool?
     /// Telechargements en cours, par appid.
     private(set) var downloads: [Int: DownloadProgress] = [:]
     /// Les reprises de bouteille en cours (quelques secondes).
@@ -126,7 +138,14 @@ final class LibraryModel {
     func reloadIfStale() async {
         guard Date().timeIntervalSince(lastReload) > 15 else { return }
         await reload()
+        // « pas a jour » aussi a pu changer sans Verger (un `cidre dl` au
+        // Terminal, un build publie depuis) : on ne garde pas un vieux verdict.
+        if Date().timeIntervalSince(lastUpdatesCheck) > Self.updatesMaxAge { await checkUpdates() }
     }
+
+    /// Au-dela, l'etat des mises a jour est redemande a Cidre quand Verger
+    /// revient au premier plan (Cidre, lui, garde la reponse de Steam 30 minutes).
+    static let updatesMaxAge: TimeInterval = 10 * 60
 
     func reload() async {
         lastReload = Date()
@@ -136,6 +155,8 @@ final class LibraryModel {
             return
         }
         cli.steamUser = steamUser
+        // un autre Cidre (choisi, installe, mis a jour) : ce qu'il sait faire est a redemander
+        if self.cli?.executable != cli.executable { updatesBeforeLaunch = nil }
         self.cli = cli
         if games.isEmpty { state = .loading }
         do {
@@ -391,17 +412,53 @@ final class LibraryModel {
         return try? await cli.info(id: game.id)
     }
 
-    func play(_ game: Game) {
+    /// Ce que fait « Jouer » pour ce jeu : le lancer, ou le mettre a jour d'abord.
+    func playPlan(for game: Game) -> PlayPlan {
+        PlayPlan.plan(for: game, update: game.appid.flatMap { updates[$0] })
+    }
+
+    /// Lance le jeu. Un jeu du dossier Cidre dont Steam publie un build plus
+    /// recent est d'abord mis a jour (avancement dans `downloads`), puis lance ;
+    /// si la mise a jour est impossible, il part dans sa version installee et
+    /// `updateNotices` dit pourquoi. `skipUpdate` : jouer tout de suite.
+    func play(_ game: Game, skipUpdate: Bool = false) {
         guard let cli, !running.contains(game.id) else { return }
+        // deja en train d'etre telecharge : on ne lance pas un jeu a moitie remplace
+        if let appid = game.appid, downloads[appid] != nil { return }
         launched.insert(game.id)
+        if let appid = game.appid { updateNotices[appid] = nil }
         let log = Self.logsDirectory.appendingPathComponent("play-\(game.id).log")
-        Task {
+        playTasks[game.id] = Task {
             await refreshRunning()
             do {
-                try await cli.play(id: game.id, log: log)
+                if await canUpdateBeforeLaunch(cli) {
+                    // Cidre verifie, met a jour s'il le faut, puis lance : il le raconte.
+                    try await cli.play(id: game.id, log: log, skipUpdate: skipUpdate) { event in
+                        Task { @MainActor in self.handle(event, for: game) }
+                    }
+                } else {
+                    // Un Cidre plus ancien lance sans regarder : Verger met a jour lui-meme.
+                    if !skipUpdate, let appid = game.appid, playPlan(for: game) == .updateThenPlay {
+                        updatingBeforeLaunch.insert(appid)
+                        let outcome = await performDownload(appid: appid)
+                        updatingBeforeLaunch.remove(appid)
+                        if outcome == .cancelled { throw CancellationError() }
+                        if outcome == .failed {
+                            // l'erreur est montree par ailleurs ; le jeu installe reste jouable
+                            updateNotices[appid] = L10n.string("La mise à jour a échoué : le jeu est lancé dans sa version installée.")
+                        }
+                    }
+                    try await cli.play(id: game.id, log: log)
+                }
+            } catch is CancellationError {
+                // la mise a jour a ete arretee : le jeu n'est pas lance
+            } catch CidreError.updateRunning {
+                lastError = CidreError.updateRunning.localizedDescription
             } catch {
                 lastError = LaunchFailureExplainer.explain(log: log, fallback: error.localizedDescription)
             }
+            if let appid = game.appid, updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
+            playTasks[game.id] = nil
             // Un jeu du client Steam : `cidre play` rend la main tout de suite,
             // et Steam met quelques secondes a le demarrer. On le garde « en
             // cours » le temps que Cidre le voie tourner.
@@ -413,8 +470,49 @@ final class LibraryModel {
             }
             launched.remove(game.id)
             await refreshRunning()
-            // Le jeu a tourne : sa date de dernier lancement a pu changer.
+            // Le jeu a tourne : sa date de dernier lancement a pu changer, et
+            // son build si Cidre l'a mis a jour.
             await reload()
+            if game.source == .cidre { await checkUpdates() }
+        }
+    }
+
+    /// Ce Cidre sait-il mettre a jour avant de lancer ? Il le dit par l'option
+    /// `maj_avant_lancement` de ses reglages generaux.
+    private func canUpdateBeforeLaunch(_ cli: CidreCLI) async -> Bool {
+        if let known = updatesBeforeLaunch { return known }
+        // (un echec passager n'est pas retenu : on redemandera)
+        guard let defaults = try? await cli.defaultOptions() else { return false }
+        let known = defaults.options.updateBeforeLaunch != nil
+        updatesBeforeLaunch = known
+        return known
+    }
+
+    /// Un evenement de `cidre play --json` : ou en est la mise a jour d'avant lancement.
+    private func handle(_ event: PlayEvent, for game: Game) {
+        // (un evenement arrive apres la fin de la commande ne doit rien ressusciter)
+        guard let appid = game.appid, playTasks[game.id] != nil else { return }
+        switch event {
+        case .launching:
+            if updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
+        case let .update(status):
+            switch status.state {
+            case .running:
+                updatingBeforeLaunch.insert(appid)
+                downloads[appid] = status.progress ?? downloads[appid] ?? DownloadProgress()
+            case .done, .upToDate:
+                if updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
+                updates[appid] = nil
+            case .failed, .unknown:
+                if updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
+                // pas faite, ou pas verifiee : le jeu part quand meme, la fiche dit pourquoi
+                if let explanation = status.explanation {
+                    updateNotices[appid] = explanation + " " + L10n.string("Le jeu est lancé dans sa version installée.")
+                }
+            case .ignored, .available, .checking:
+                // (laissee de cote : la fiche le dit deja, d'apres `updates`)
+                break
+            }
         }
     }
 
@@ -566,8 +664,9 @@ final class LibraryModel {
     /// Regarde quels jeux Steam installes ont une version plus recente publiee.
     /// Silencieux en cas d'echec (hors ligne, Cidre trop ancien) : on ne sait pas, c'est tout.
     func checkUpdates(refresh: Bool = false) async {
+        lastUpdatesCheck = Date()
         guard let found = try? await cli?.updates(refresh: refresh) else { return }
-        updates = Dictionary(uniqueKeysWithValues: found.filter { !$0.upToDate }.map { ($0.appid, $0) })
+        updates = Dictionary(found.filter(\.needsUpdate).map { ($0.appid, $0) }, uniquingKeysWith: { _, last in last })
     }
 
     /// Un jeu du client Steam se met a jour dans Steam : on ouvre ses telechargements.
@@ -683,29 +782,11 @@ final class LibraryModel {
     }
 
     func download(appid: Int) {
-        guard let cli, downloadTasks[appid] == nil else { return }
+        guard cli != nil, downloadTasks[appid] == nil, downloads[appid] == nil else { return }
         downloads[appid] = DownloadProgress()
         downloadTasks[appid] = Task {
-            do {
-                try await cli.download(appid: appid) { progress in
-                    Task { @MainActor in
-                        // un avancement arrive apres la fin ne doit pas la ressusciter
-                        if self.downloads[appid] != nil { self.downloads[appid] = progress }
-                    }
-                }
-            } catch is CancellationError {
-                // arrete par l'utilisateur : SteamCMD reprendra ou il en etait
-            } catch CidreError.steamSessionMissing {
-                ownedState = .sessionMissing
-                loginNeeded = true
-            } catch {
-                lastError = error.localizedDescription
-            }
-            downloads[appid] = nil
+            _ = await performDownload(appid: appid)
             downloadTasks[appid] = nil
-            await reload()
-            await checkUpdates()
-            if ownedState == .loaded { await loadOwned() }
         }
         // le dossier du jeu apparait des le debut : on le montre dans la grille
         Task {
@@ -714,8 +795,49 @@ final class LibraryModel {
         }
     }
 
+    private enum DownloadOutcome {
+        case done, cancelled, failed
+    }
+
+    /// `cidre dl`, attendu jusqu'au bout : l'avancement va dans `downloads`, et
+    /// l'etat des mises a jour est relu a la fin.
+    private func performDownload(appid: Int) async -> DownloadOutcome {
+        guard let cli else { return .failed }
+        downloads[appid] = downloads[appid] ?? DownloadProgress()
+        var outcome = DownloadOutcome.done
+        do {
+            try await cli.download(appid: appid) { progress in
+                Task { @MainActor in
+                    // un avancement arrive apres la fin ne doit pas la ressusciter
+                    if self.downloads[appid] != nil { self.downloads[appid] = progress }
+                }
+            }
+            // le jeu vient d'etre mis a jour, quoi qu'en dise un cache en retard
+            updates[appid] = nil
+            updateNotices[appid] = nil
+        } catch is CancellationError {
+            // arrete par l'utilisateur : SteamCMD reprendra ou il en etait
+            outcome = .cancelled
+        } catch CidreError.steamSessionMissing {
+            ownedState = .sessionMissing
+            loginNeeded = true
+            outcome = .failed
+        } catch {
+            lastError = error.localizedDescription
+            outcome = .failed
+        }
+        downloads[appid] = nil
+        await reload()
+        await checkUpdates()
+        if ownedState == .loaded { await loadOwned() }
+        return outcome
+    }
+
     func cancelDownload(appid: Int) {
         downloadTasks[appid]?.cancel()
+        // une mise a jour d'avant lancement : on arrete tout, le jeu ne part pas
+        // (jamais une fois le jeu lance : arreter la commande l'arreterait)
+        if updatingBeforeLaunch.contains(appid) { playTasks[String(appid)]?.cancel() }
     }
 
     /// Version macOS : c'est le client Steam qui l'installe, dans sa propre
