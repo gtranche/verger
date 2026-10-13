@@ -97,8 +97,21 @@ struct InstallSheet: View {
                     search.isEmpty ? "Tout est déjà installé" : "Aucun jeu ne correspond",
                     systemImage: "leaf")
             } else {
-                List(candidates) { game in
-                    OwnedGameRow(game: game)
+                // Les jeux deja installes par un autre outil d'abord : au milieu
+                // des centaines de jeux du compte, personne ne les trouve (4 sur
+                // 1220 sur l'iMac M4, aux rangs 389 a 991).
+                let inBottles = candidates.filter(\.inBottle)
+                List {
+                    if inBottles.isEmpty {
+                        ForEach(candidates) { OwnedGameRow(game: $0) }
+                    } else {
+                        Section("Déjà sur ce Mac : à reprendre sans retélécharger") {
+                            ForEach(inBottles) { OwnedGameRow(game: $0) }
+                        }
+                        Section("À télécharger") {
+                            ForEach(candidates.filter { !$0.inBottle }) { OwnedGameRow(game: $0) }
+                        }
+                    }
                 }
                 .listStyle(.inset)
                 Divider()

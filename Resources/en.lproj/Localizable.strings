@@ -369,4 +369,6 @@
 "Reprendre" = "Take over";
 "Déjà installé par %@ (bouteille « %@ ») : repris sans retéléchargement, la bouteille n'est pas modifiée." = "Already installed by %1$@ (bottle “%2$@”): taken over without re-downloading, the bottle is left untouched.";
 "Déjà installé par %@ · %@" = "Already installed by %1$@ · %2$@";
+"Déjà sur ce Mac : à reprendre sans retélécharger" = "Already on this Mac: take over without re-downloading";
+"À télécharger" = "To download";
 
