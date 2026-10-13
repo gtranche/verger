@@ -46,6 +46,7 @@ IGNORES = {
     "SET_ACTIVITY", "ERROR", "DISPATCH", "READY", "Discord", "steam",
     "ongletReglages", "cleSteamGridDB", "cidrePath", "steamUser", "AppleLanguages", "langue",
     # le rapport de jeu : son format est celui des fiches de Cidre, en francais
+    "<!-- cidre-rapport v1 appid=%@ -->",
     "partageProposes", "[[rapports]]", "[profil]", "Rapport de jeu : %@ (%@)", "Apple ", "Go",
 }
 

@@ -39,7 +39,7 @@ import Testing
     #expect(issue.title == "Rapport de jeu : Dead Cells (588650)")
     #expect(issue.labels == ["rapport-jeu"])
     let body = issue.body()
-    #expect(body.hasPrefix("```toml\n[[rapports]]\n"))
+    #expect(body.hasPrefix("<!-- cidre-rapport v1 appid=588650 -->\n```toml\n[[rapports]]\n"))
     #expect(body.contains("```\n\n**Profil effectif**\n```toml\n[profil]\n"))
     #expect(body.contains("```text\n== Verger ==\n  version : 0.3.10\n== Cidre ==\n  ok\n```"))
     let items = try #require(URLComponents(url: issue.url(), resolvingAgainstBaseURL: false)?.queryItems)
@@ -56,7 +56,7 @@ import Testing
     #expect(minimal.text == "```toml\n[[rapports]]\ndate = \"2026-01-02\"\netat = \"ko\"\n```\n")
     // sans diagnostic : pas de journal dans l'incident, et le jeu hors Steam garde son identifiant
     let issue = minimal.issue(gameName: "Mon Jeu", gameID: "local-mon-jeu")
-    #expect(issue.body() == minimal.text)
+    #expect(issue.body() == "<!-- cidre-rapport v1 appid=local-mon-jeu -->\n" + minimal.text)
     #expect(issue.title == "Rapport de jeu : Mon Jeu (local-mon-jeu)")
 
     // un seul des deux fps, une machine vide

@@ -89,6 +89,9 @@ public struct GameReport: Equatable, Sendable {
 
     private static func line(_ key: String, _ value: String) -> String { key + " = " + value }
 
+    /// La balise de tete d'un incident : la version du format et le jeu.
+    public static func tag(gameID: String) -> String { "<!-- cidre-rapport v1 appid=\(gameID) -->" }
+
     /// Le bloc `[[rapports]]`, tel qu'il se colle dans la fiche du jeu. Les
     /// champs inconnus ou vides n'y figurent pas : TOML n'a pas de « rien ».
     /// Le champ `incident` (l'adresse de l'incident) est ajoute par le mainteneur.
@@ -125,11 +128,15 @@ public struct GameReport: Equatable, Sendable {
     /// (<appid>) », en francais quelle que soit la langue de Verger, pour le tri
     /// cote Cidre), label `rapport-jeu`, le diagnostic en journal. Une adresse
     /// web ne porte que quelques kilo-octets : si le diagnostic n'y tient pas,
-    /// c'est sa fin qui est coupee, pas son debut.
+    /// c'est sa fin qui est coupee, pas son debut. Le texte commence par une
+    /// balise que GitHub n'affiche pas, « <!-- cidre-rapport v1 appid=... --> » :
+    /// l'outil de relecture de Cidre (tests/outils/rapports_vers_fiches.py) y
+    /// lit le jeu meme si l'utilisateur a refait le titre.
     public func issue(gameName: String, gameID: String, repository: String = "gtranche/cidre") -> IssueReport {
         let diagnostic = (context.diagnostic ?? "").split(whereSeparator: \.isNewline).map(String.init)
         return IssueReport(
-            repository: repository, title: "Rapport de jeu : \(gameName) (\(gameID))", text: text,
+            repository: repository, title: "Rapport de jeu : \(gameName) (\(gameID))",
+            text: Self.tag(gameID: gameID) + "\n" + text,
             logTitle: L10n.string("Diagnostic"), log: diagnostic, labels: ["rapport-jeu"], truncation: .head)
     }
 }
