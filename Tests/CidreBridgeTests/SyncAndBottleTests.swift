@@ -86,8 +86,35 @@ struct SyncAndBottleTests {
         #expect(try decode(ImportResult.self, #"{"id":"1","reprise_sauvegardes":null}"#).saves == nil)
     }
 
+    // Steam d'abord : le dossier que Steam synchronise a deja des sauvegardes,
+    // la bouteille ne les remplace pas.
+    @Test func importResultWhenSteamComesFirst() throws {
+        let r = try decode(ImportResult.self, """
+        {"id":"2006","appid":2006,"nom":"Jeu Six","reprise_sauvegardes":{"appid":2006,"etat":"steam_prioritaire","fichiers":0,"remplaces":0,"gardes":2,"identiques":0,"octets":0,"origine":"crossover","bouteille":"Jeux","depuis":"/b","vers":"/m","dossier":"AppData/LocalLow/D/J","synchro":"steam_macos","historique":"","steam_fichiers":1,"steam_distants":false,"conflit_possible":false,"force":false,"date":1,"message":"m"}}
+        """)
+        let s = try #require(r.saves)
+        #expect(s.state == .steamFirst)
+        #expect(s.files == 0)
+        #expect(s.kept == 2)
+        #expect(s.steamFiles == 1)
+        #expect(!s.possibleConflict)
+        #expect(s.notice(game: "Jeu Six").contains("Steam Cloud"))
+        #expect(s.notice(game: "Jeu Six").contains("Jeux"))
+    }
+
+    @Test func importResultFilledAnEmptySteamFolder() throws {
+        let s = try decode(SavesImport.self, """
+        {"appid":2014,"etat":"copie","fichiers":1,"remplaces":0,"gardes":0,"bouteille":"Jeux","synchro":"steam_macos","steam_fichiers":0,"steam_distants":false,"conflit_possible":true,"force":false}
+        """)
+        #expect(s.state == .copied)
+        #expect(s.possibleConflict)
+        let quiet = try decode(SavesImport.self, #"{"etat":"copie","fichiers":1,"bouteille":"Jeux"}"#)
+        #expect(!quiet.possibleConflict)
+        #expect(s.notice(game: "X") != quiet.notice(game: "X"))
+    }
+
     @Test func importStatesAllHaveANotice() throws {
-        for state in ["copie", "a_jour", "steam", "avec_le_jeu", "absentes", "introuvable", "erreur", "plus_tard"] {
+        for state in ["copie", "a_jour", "steam", "steam_prioritaire", "avec_le_jeu", "absentes", "introuvable", "erreur", "plus_tard"] {
             let s = try decode(SavesImport.self, #"{"etat":"\#(state)","bouteille":"B"}"#)
             #expect(s.notice(game: "Jeu").hasPrefix("Jeu"))
         }

@@ -113,6 +113,10 @@ public struct SavesImport: Decodable, Equatable, Sendable {
         case upToDate = "a_jour"
         /// Steam Cloud les detient (API de Steam) : rien n'est copie.
         case steam
+        /// Le dossier que Steam synchronise a deja des sauvegardes de ce jeu :
+        /// elles ont la priorite, rien n'est copie (`steamFiles` cote Steam,
+        /// `kept` restees dans la bouteille).
+        case steamFirst = "steam_prioritaire"
         /// Le jeu les range dans son propre dossier : elles sont venues avec lui.
         case withGame = "avec_le_jeu"
         /// La bouteille n'en a pas.
@@ -129,8 +133,14 @@ public struct SavesImport: Decodable, Equatable, Sendable {
     public let files: Int
     /// Parmi eux, ceux qui ont remplace une version plus ancienne (gardee dans l'historique).
     public let replaced: Int
-    /// Fichiers plus recents sur ce Mac, laisses tels quels.
+    /// Fichiers plus recents sur ce Mac, laisses tels quels ; avec
+    /// `steamFirst`, ceux que la bouteille garde.
     public let kept: Int
+    /// Avec `steamFirst` : les sauvegardes que Steam a deja pour ce jeu.
+    public let steamFiles: Int
+    /// Les sauvegardes ont comble un dossier que Steam synchronise, sans que
+    /// Cidre ait pu savoir ce que garde le nuage : Steam peut signaler un conflit.
+    public let possibleConflict: Bool
     /// L'outil de la bouteille : "crossover", "whisky", "heroic".
     public let origin: String?
     public let bottle: String?
@@ -145,6 +155,8 @@ public struct SavesImport: Decodable, Equatable, Sendable {
         case files = "fichiers"
         case replaced = "remplaces"
         case kept = "gardes"
+        case steamFiles = "steam_fichiers"
+        case possibleConflict = "conflit_possible"
         case origin = "origine"
         case bottle = "bouteille"
         case from = "depuis"
@@ -158,6 +170,8 @@ public struct SavesImport: Decodable, Equatable, Sendable {
         files = try c.decodeIfPresent(Int.self, forKey: .files) ?? 0
         replaced = try c.decodeIfPresent(Int.self, forKey: .replaced) ?? 0
         kept = try c.decodeIfPresent(Int.self, forKey: .kept) ?? 0
+        steamFiles = try c.decodeIfPresent(Int.self, forKey: .steamFiles) ?? 0
+        possibleConflict = try c.decodeIfPresent(Bool.self, forKey: .possibleConflict) ?? false
         origin = try c.decodeIfPresent(String.self, forKey: .origin)
         bottle = try c.decodeIfPresent(String.self, forKey: .bottle)
         from = try c.decodeIfPresent(String.self, forKey: .from)
@@ -168,8 +182,12 @@ public struct SavesImport: Decodable, Equatable, Sendable {
     /// Ce qu'il faut en dire au joueur, en une ligne, apres « Reprendre ».
     public func notice(game: String) -> String {
         switch state {
+        case .copied where possibleConflict:
+            L10n.format("%@ : %lld fichier(s) de sauvegarde ramené(s) de la bouteille « %@ ». Si Steam Cloud en garde d'autres, faites ailleurs, Steam te demandera laquelle garder.", game, files, bottle ?? "")
         case .copied:
             L10n.format("%@ : %lld fichier(s) de sauvegarde ramené(s) de la bouteille « %@ ».", game, files, bottle ?? "")
+        case .steamFirst:
+            L10n.format("%@ : Steam Cloud a déjà des sauvegardes de ce jeu, elles ont la priorité. Rien n'a été copié de la bouteille « %@ », qui garde les siennes (%lld fichier(s)).", game, bottle ?? "", kept)
         case .upToDate:
             L10n.format("%@ : rien à ramener, les sauvegardes de ce Mac sont identiques à celles de la bouteille, ou plus récentes.", game)
         case .steam:

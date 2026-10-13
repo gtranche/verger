@@ -377,6 +377,9 @@
 "%@ : sauvegardes non trouvées dans la bouteille « %@ » (Cidre ne sait pas où ce jeu les range)." = "%1$@: saves not found in the “%2$@” bottle (Cidre does not know where this game keeps them).";
 "%@ : ses sauvegardes n'ont pas été ramenées de la bouteille. %@" = "%1$@: its saves were not brought over from the bottle. %2$@";
 "Reprises de la bouteille" = "Brought over from the bottle";
+"Aucune : Steam Cloud a la priorité" = "None: Steam Cloud comes first";
+"%@ : %lld fichier(s) de sauvegarde ramené(s) de la bouteille « %@ ». Si Steam Cloud en garde d'autres, faites ailleurs, Steam te demandera laquelle garder." = "%1$@: %2$lld save file(s) brought over from the “%3$@” bottle. If Steam Cloud holds others, made elsewhere, Steam will ask which one to keep.";
+"%@ : Steam Cloud a déjà des sauvegardes de ce jeu, elles ont la priorité. Rien n'a été copié de la bouteille « %@ », qui garde les siennes (%lld fichier(s))." = "%1$@: Steam Cloud already has saves for this game, they come first. Nothing was copied from the “%2$@” bottle, which keeps its own (%3$lld file(s)).";
 "%lld fichier(s), bouteille « %@ »" = "%1$lld file(s), “%2$@” bottle";
 "Déjà sur ce Mac : à reprendre sans retélécharger" = "Already on this Mac: take over without re-downloading";
 "À télécharger" = "To download";

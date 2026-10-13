@@ -73,6 +73,12 @@ struct SavesSection: View {
                     .foregroundStyle(.secondary)
             }
             .help(imported.message ?? "")
+        } else if let imported = status.imported, imported.state == .steamFirst {
+            LabeledContent("Reprises de la bouteille") {
+                Text("Aucune : Steam Cloud a la priorité")
+                    .foregroundStyle(.secondary)
+            }
+            .help(imported.message ?? "")
         }
 
         if working {
