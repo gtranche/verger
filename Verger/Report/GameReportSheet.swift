@@ -17,6 +17,9 @@ struct GameReportSheet: View {
     @State private var context: GameReport.Context?
     @State private var copied = false
     @State private var attachment: URL?
+    /// La page de GitHub a ete ouverte : avec le rapport dans l'adresse, ou
+    /// sans lui (trop long : il est dans le presse-papiers, a coller).
+    @State private var opened: IssueReport.Delivery?
 
     private var report: GameReport {
         GameReport(context: context ?? GameReport.Context(), verdict: verdict, fpsMenu: fpsMenu, fpsGame: fpsGame, notes: notes)
@@ -80,6 +83,17 @@ struct GameReportSheet: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
+            if case .clipboard = opened {
+                Label("Ton rapport est trop long pour une adresse web : il est copié. Colle-le (⌘V) dans le champ « Rapport » de la page qui vient de s'ouvrir, à la place du modèle.", systemImage: "doc.on.clipboard")
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if opened != nil {
+                Text("La page s'est ouverte sans ton rapport, ou GitHub t'a d'abord demandé de te connecter ? Reviens ici et rouvre-la, ou copie le rapport et colle-le dans le champ « Rapport ».")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let attachment {
                 HStack {
                     Text("Une adresse web ne porte que le début du diagnostic. Pour le joindre en entier, glisse ce fichier dans l'incident :")
@@ -104,12 +118,20 @@ struct GameReportSheet: View {
                 .disabled(context == nil)
                 Button("Ouvrir sur GitHub") {
                     let issue = issue
-                    let url = issue.url()
-                    // le diagnostic coupe dans l'adresse : le rapport entier en fichier
-                    if url.absoluteString.utf8.count < issue.url(maxLength: .max).absoluteString.utf8.count {
-                        attachment = library.saveGameReport(issue, gameID: game.id)
+                    let delivery = issue.delivery(maxLength: GameReport.maxURLLength, throughLogin: true)
+                    switch delivery {
+                    case .address(let url, let complete):
+                        // le diagnostic coupe dans l'adresse : le rapport entier en fichier
+                        attachment = complete ? nil : library.saveGameReport(issue, gameID: game.id)
+                        NSWorkspace.shared.open(url)
+                    case .clipboard(let url):
+                        // le rapport lui-meme n'y tient pas : il part par le presse-papiers
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(issue.body(), forType: .string)
+                        attachment = nil
+                        NSWorkspace.shared.open(url)
                     }
-                    NSWorkspace.shared.open(url)
+                    opened = delivery
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)

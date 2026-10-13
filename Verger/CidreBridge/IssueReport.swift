@@ -119,8 +119,16 @@ public struct IssueReport: Equatable, Sendable {
     /// L'intitule du journal, puis ses lignes (la fin du journal d'un jeu).
     public var logTitle: String
     public var log: [String]
-    /// Les labels GitHub a poser sur l'incident (« rapport-jeu »).
-    public var labels: [String]
+    /// Le formulaire d'incident du depot (« rapport-jeu.yml », dans
+    /// `.github/ISSUE_TEMPLATE/`), ou `nil` pour un incident libre. C'est le
+    /// formulaire qui pose le label, quel que soit l'auteur : un `labels=` dans
+    /// l'adresse exige le droit de poser un label sur le depot, et GitHub rend
+    /// une page 404 a qui ne l'a pas (sa documentation, « Creating an issue
+    /// from a URL query »). Un joueur ne l'a jamais : pas de `labels=` ici.
+    public var template: String?
+    /// Le parametre d'adresse qui porte le texte : `body` pour un incident
+    /// libre, l'identifiant (`id`) du champ de texte pour un formulaire.
+    public var field: String
     /// Quand le journal ne tient pas dans l'adresse : garder sa fin (un journal
     /// de jeu, dont les dernieres lignes disent l'erreur) ou son debut (un
     /// diagnostic, qui commence par l'essentiel).
@@ -128,13 +136,14 @@ public struct IssueReport: Equatable, Sendable {
     public var truncation: Truncation
 
     public init(repository: String, title: String, text: String, logTitle: String = "", log: [String] = [],
-                labels: [String] = [], truncation: Truncation = .tail) {
+                template: String? = nil, field: String = "body", truncation: Truncation = .tail) {
         self.repository = repository
         self.title = title
         self.text = text
         self.logTitle = logTitle
         self.log = log
-        self.labels = labels
+        self.template = template
+        self.field = field
         self.truncation = truncation
     }
 
@@ -152,28 +161,66 @@ public struct IssueReport: Equatable, Sendable {
         return text + "\n\n**\(logTitle)**\n\(fence)text\n" + kept.joined(separator: "\n") + "\n\(fence)\n"
     }
 
+    /// La page « nouvel incident » avec ces parametres, dans l'ordre.
+    private func address(_ items: [URLQueryItem]) -> URL {
+        var components = URLComponents(string: "https://github.com/\(repository)/issues/new")!
+        components.queryItems = (template.map { [URLQueryItem(name: "template", value: $0)] } ?? []) + items
+        // `+` doit etre encode : dans une adresse il se lirait comme un espace
+        components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
+        return components.url!
+    }
+
+    private func address(logLines: Int) -> URL {
+        address([URLQueryItem(name: "title", value: title), URLQueryItem(name: field, value: body(logLines: logLines))])
+    }
+
+    /// La longueur d'une adresse telle que GitHub la recoit. Un utilisateur qui
+    /// n'est pas connecte dans son navigateur est renvoye vers
+    /// `/login?return_to=<adresse>`, ou l'adresse est encodee une seconde fois
+    /// (`%C3` devient `%25C3`) : avec `throughLogin`, c'est cette forme, la plus
+    /// longue, qui est mesuree. Trop longue, GitHub l'abandonne et l'utilisateur
+    /// arrive, une fois connecte, sur une page sans son texte.
+    public static func length(of url: URL, throughLogin: Bool = false) -> Int {
+        let direct = url.absoluteString.utf8.count
+        guard throughLogin else { return direct }
+        // une adresse est deja en ASCII : seuls lettres, chiffres et « - . _ » y restent tels quels
+        let kept = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-._"))
+        let encoded = url.absoluteString.addingPercentEncoding(withAllowedCharacters: kept) ?? url.absoluteString
+        return "https://github.com/login?return_to=".utf8.count + encoded.utf8.count
+    }
+
     /// L'adresse de la page « nouvel incident » remplie. Une adresse ne porte que
     /// quelques kilo-octets : on y met autant de lignes de la fin du journal
     /// qu'il en tient, le reste part en piece jointe.
-    public func url(maxLength: Int = 7000) -> URL {
+    public func url(maxLength: Int = 7000, throughLogin: Bool = false) -> URL {
         var lines = log.count
         while true {
-            var components = URLComponents(string: "https://github.com/\(repository)/issues/new")!
-            components.queryItems = [
-                URLQueryItem(name: "title", value: title),
-                URLQueryItem(name: "body", value: body(logLines: lines)),
-            ]
-            if !labels.isEmpty {
-                components.queryItems?.append(URLQueryItem(name: "labels", value: labels.joined(separator: ",")))
-            }
-            // `+` doit etre encode : dans une adresse il se lirait comme un espace
-            components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
-            if let url = components.url, url.absoluteString.utf8.count <= maxLength || lines == 0 {
+            let url = address(logLines: lines)
+            if Self.length(of: url, throughLogin: throughLogin) <= maxLength || lines == 0 {
                 return url
             }
             lines = lines > 8 ? lines * 2 / 3 : lines - 1
             if lines < 0 { lines = 0 }
         }
+    }
+
+    /// L'adresse sans le texte : le formulaire et le titre seuls. Pour un texte
+    /// qui ne tient pas dans une adresse, meme sans journal.
+    public var shortURL: URL { address([URLQueryItem(name: "title", value: title)]) }
+
+    /// Par ou le texte arrive a GitHub.
+    public enum Delivery: Equatable, Sendable {
+        /// Dans l'adresse. `complete` est faux quand le journal y est coupe.
+        case address(URL, complete: Bool)
+        /// Le texte seul deborde deja de l'adresse : la page s'ouvre sans lui,
+        /// et il est a coller depuis le presse-papiers.
+        case clipboard(URL)
+    }
+
+    public func delivery(maxLength: Int = 7000, throughLogin: Bool = false) -> Delivery {
+        let url = url(maxLength: maxLength, throughLogin: throughLogin)
+        if Self.length(of: url, throughLogin: throughLogin) > maxLength { return .clipboard(shortURL) }
+        return .address(url, complete: url == address(logLines: log.count))
     }
 }
 

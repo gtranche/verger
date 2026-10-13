@@ -49,6 +49,9 @@ import Testing
     // la FIN du journal est gardee, le debut part en piece jointe
     #expect(body.contains("ligne 400 :") && !body.contains("ligne 1 :"))
     #expect(body.hasPrefix("**Ce qui s'est passé**"))
+    // un incident libre : ni formulaire ni label dans l'adresse, le texte dans `body`
+    #expect(items.map(\.name) == ["title", "body"])
+    #expect(report.delivery() == .address(url, complete: false))
     #expect(body.contains("é + & # % —"))
     // le `+` voyage encode, sinon GitHub le lirait comme un espace
     #expect(!url.absoluteString.contains("+"))

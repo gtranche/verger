@@ -124,20 +124,36 @@ public struct GameReport: Equatable, Sendable {
         return text
     }
 
+    /// Le formulaire d'incident « Rapport de jeu » du depot de Cidre
+    /// (`.github/ISSUE_TEMPLATE/rapport-jeu.yml`) et l'identifiant de son champ
+    /// de texte. Les deux noms sont ceux du depot : les changer ici sans les
+    /// changer la-bas ouvre une page vide.
+    public static let issueTemplate = "rapport-jeu.yml"
+    public static let issueField = "rapport"
+
+    /// La plus longue adresse qu'on presente a GitHub, redirection de connexion
+    /// comprise (`IssueReport.length(of:throughLogin:)`). Mesure sans session
+    /// le 2026-10-13 : la page repond jusqu'a ~7 020 octets, rend une erreur
+    /// 500 au-dela et « 414 URI Too Long » apres ~8 200. On garde une marge.
+    public static let maxURLLength = 6800
+
     /// L'incident GitHub pret a partir : titre fixe (« Rapport de jeu : <nom>
     /// (<appid>) », en francais quelle que soit la langue de Verger, pour le tri
-    /// cote Cidre), label `rapport-jeu`, le diagnostic en journal. Une adresse
-    /// web ne porte que quelques kilo-octets : si le diagnostic n'y tient pas,
-    /// c'est sa fin qui est coupee, pas son debut. Le texte commence par une
-    /// balise que GitHub n'affiche pas, « <!-- cidre-rapport v1 appid=... --> » :
-    /// l'outil de relecture de Cidre (tests/outils/rapports_vers_fiches.py) y
-    /// lit le jeu meme si l'utilisateur a refait le titre.
+    /// cote Cidre), formulaire « Rapport de jeu » du depot (c'est lui qui pose
+    /// le label `rapport-jeu`, pour n'importe quel auteur), le diagnostic en
+    /// journal. Une adresse web ne porte que quelques kilo-octets : si le
+    /// diagnostic n'y tient pas, c'est sa fin qui est coupee, pas son debut. Le
+    /// texte commence par une balise que GitHub n'affiche pas,
+    /// « <!-- cidre-rapport v1 appid=... --> » : l'outil de relecture de Cidre
+    /// (tests/outils/rapports_vers_fiches.py) y lit le jeu meme si
+    /// l'utilisateur a refait le titre.
     public func issue(gameName: String, gameID: String, repository: String = "gtranche/cidre") -> IssueReport {
         let diagnostic = (context.diagnostic ?? "").split(whereSeparator: \.isNewline).map(String.init)
         return IssueReport(
             repository: repository, title: "Rapport de jeu : \(gameName) (\(gameID))",
             text: Self.tag(gameID: gameID) + "\n" + text,
-            logTitle: L10n.string("Diagnostic"), log: diagnostic, labels: ["rapport-jeu"], truncation: .head)
+            logTitle: L10n.string("Diagnostic"), log: diagnostic,
+            template: Self.issueTemplate, field: Self.issueField, truncation: .head)
     }
 }
 
