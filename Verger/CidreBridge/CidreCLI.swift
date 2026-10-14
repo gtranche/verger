@@ -10,11 +10,17 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
     /// `cidre play` refuse de lancer un jeu dont une mise a jour tourne deja
     /// ailleurs (code 4) : il serait pris a moitie remplace.
     case updateRunning
+    /// `cidre play` refuse de lancer un jeu (code 7) : le client Steam croit sur
+    /// ce Mac des sauvegardes qui n'y sont plus (`files`), et les retirerait du
+    /// nuage a la sortie du jeu. Relancer avec `acceptCloudLoss` passe outre.
+    case cloudSavesAtRisk(files: [String])
 
     public var errorDescription: String? {
         switch self {
         case .updateRunning:
             return L10n.string("Une mise à jour de ce jeu est déjà en cours : attends sa fin, puis relance-le.")
+        case let .cloudSavesAtRisk(files):
+            return L10n.format("Des sauvegardes que Steam croit sur ce Mac n'y sont plus : %@. Le jeu n'a pas été lancé, pour que Steam ne les retire pas du nuage.", files.joined(separator: ", "))
         case let .commandFailed(command, status, message):
             let detail = message.trimmingCharacters(in: .whitespacesAndNewlines)
             return L10n.format("`cidre %@` a échoué (code %lld)", command, Int(status)) + (detail.isEmpty ? "." : " : \(detail)")
@@ -136,8 +142,32 @@ public struct CidreCLI: Sendable {
     /// `cidre play <id>`. Rend la main quand la commande se termine : tout de
     /// suite pour un jeu lance par Steam, a la sortie du jeu sinon. La sortie
     /// de la commande va dans `log`.
-    public func play(id: String, log: URL? = nil) async throws {
-        try await runLogged(["play", id], log: log)
+    public func play(id: String, log: URL? = nil, acceptCloudLoss: Bool = false) async throws {
+        do {
+            try await runLogged(["play", id] + (acceptCloudLoss ? ["--accord-nuage"] : []), log: log)
+        } catch let CidreError.commandFailed(_, status, _) where status == 7 {
+            throw CidreError.cloudSavesAtRisk(files: Self.cloudGuardFiles(in: log))
+        }
+    }
+
+    /// Les sauvegardes que la garde de Cidre (tests/garde_nuage_steam.sh) dit
+    /// manquantes, lues dans le journal du lancement : les lignes en retrait qui
+    /// suivent « … que Steam croit sur ce Mac n'y sont plus : ».
+    public static func cloudGuardFiles(in text: String) -> [String] {
+        let lines = text.components(separatedBy: "\n")
+        guard let start = lines.lastIndex(where: { $0.contains("que Steam croit sur ce Mac n'y sont plus :") }) else { return [] }
+        var files: [String] = []
+        for line in lines[(start + 1)...] {
+            guard line.hasPrefix("       "), !line.trimmingCharacters(in: .whitespaces).hasPrefix("saves:") else { break }
+            let file = line.trimmingCharacters(in: .whitespaces)
+            if !file.isEmpty { files.append(file) }
+        }
+        return files
+    }
+
+    static func cloudGuardFiles(in log: URL?) -> [String] {
+        guard let log, let text = try? String(contentsOf: log, encoding: .utf8) else { return [] }
+        return cloudGuardFiles(in: text)
     }
 
     /// `cidre play <id> --json` : avant de lancer un jeu du dossier Cidre, Cidre
@@ -150,12 +180,13 @@ public struct CidreCLI: Sendable {
     /// (`LaunchOptions.updateBeforeLaunch` non nul) : un plus ancien laisserait
     /// le jeu ecrire dans un tube que Verger ferme en quittant.
     public func play(
-        id: String, log: URL? = nil, skipUpdate: Bool = false,
+        id: String, log: URL? = nil, skipUpdate: Bool = false, acceptCloudLoss: Bool = false,
         onEvent: @escaping @Sendable (PlayEvent) -> Void
     ) async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = [executable.path, "play", id, "--json"] + (skipUpdate ? ["--sans-maj"] : [])
+            + (acceptCloudLoss ? ["--accord-nuage"] : [])
         process.environment = environment
         process.standardInput = FileHandle.nullDevice
 
@@ -201,6 +232,8 @@ public struct CidreCLI: Sendable {
         try Task.checkCancellation()
         // code 4 : une mise a jour de ce jeu tourne deja (autre commande)
         if process.terminationStatus == 4 { throw CidreError.updateRunning }
+        // code 7 : des sauvegardes que Steam croit ici manquent (la garde le dit au journal)
+        if process.terminationStatus == 7 { throw CidreError.cloudSavesAtRisk(files: Self.cloudGuardFiles(in: log)) }
         guard process.terminationStatus == 0 else {
             throw CidreError.commandFailed(
                 command: "play \(id)", status: process.terminationStatus,

@@ -377,6 +377,11 @@
 "%@ : sauvegardes non trouvées dans la bouteille « %@ » (Cidre ne sait pas où ce jeu les range)." = "%1$@: saves not found in the “%2$@” bottle (Cidre does not know where this game keeps them).";
 "%@ : ses sauvegardes n'ont pas été ramenées de la bouteille. %@" = "%1$@: its saves were not brought over from the bottle. %2$@";
 "Reprises de la bouteille" = "Brought over from the bottle";
+"Des sauvegardes que Steam croit sur ce Mac n'y sont plus : %@. Le jeu n'a pas été lancé, pour que Steam ne les retire pas du nuage." = "Saves that Steam believes are on this Mac are no longer here: %@. The game was not launched, so that Steam does not remove them from the cloud.";
+"Des sauvegardes manquent sur ce Mac" = "Some saves are missing on this Mac";
+"Lancer quand même" = "Launch Anyway";
+"(voir le journal du lancement)" = "(see the launch log)";
+"Steam croit ces sauvegardes de %@ présentes sur ce Mac, mais elles n'y sont plus :\n%@\n\nElles sont toujours dans le nuage Steam. Si tu lances le jeu quand même, Steam les retirera du nuage quand tu le quitteras. Pour les garder, remets-les à leur place avant de jouer (elles se téléchargent depuis la page Steam Cloud de ton compte)." = "Steam believes these saves of %1$@ are on this Mac, but they are no longer here:\n%2$@\n\nThey are still in the Steam cloud. If you launch the game anyway, Steam will remove them from the cloud when you quit it. To keep them, put them back in place before playing (they can be downloaded from the Steam Cloud page of your account).";
 "Aucune : Steam Cloud a la priorité" = "None: Steam Cloud comes first";
 "%@ : %lld fichier(s) de sauvegarde ramené(s) de la bouteille « %@ ». Si Steam Cloud en garde d'autres, faites ailleurs, Steam te demandera laquelle garder." = "%1$@: %2$lld save file(s) brought over from the “%3$@” bottle. If Steam Cloud holds others, made elsewhere, Steam will ask which one to keep.";
 "%@ : Steam Cloud a déjà des sauvegardes de ce jeu, elles ont la priorité. Rien n'a été copié de la bouteille « %@ », qui garde les siennes (%lld fichier(s))." = "%1$@: Steam Cloud already has saves for this game, they come first. Nothing was copied from the “%2$@” bottle, which keeps its own (%3$lld file(s)).";

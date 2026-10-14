@@ -59,6 +59,9 @@ final class LibraryModel {
     private var discord: DiscordPresence?
     private var discordShown: (id: String, at: Date)?
     var lastError: String?
+    /// Un lancement que Cidre a arrete pour proteger le nuage Steam (code 7) :
+    /// le jeu, et les sauvegardes qui manquent sur ce Mac.
+    var cloudGuard: CloudGuardRequest?
     /// Une action vient d'echouer faute de session Steam : il faut ouvrir la connexion.
     var loginNeeded = false
     var filter: Filter = .all
@@ -423,7 +426,7 @@ final class LibraryModel {
     /// recent est d'abord mis a jour (avancement dans `downloads`), puis lance ;
     /// si la mise a jour est impossible, il part dans sa version installee et
     /// `updateNotices` dit pourquoi. `skipUpdate` : jouer tout de suite.
-    func play(_ game: Game, skipUpdate: Bool = false) {
+    func play(_ game: Game, skipUpdate: Bool = false, acceptCloudLoss: Bool = false) {
         guard let cli, !running.contains(game.id) else { return }
         // deja en train d'etre telecharge : on ne lance pas un jeu a moitie remplace
         if let appid = game.appid, downloads[appid] != nil { return }
@@ -435,7 +438,7 @@ final class LibraryModel {
             do {
                 if await canUpdateBeforeLaunch(cli) {
                     // Cidre verifie, met a jour s'il le faut, puis lance : il le raconte.
-                    try await cli.play(id: game.id, log: log, skipUpdate: skipUpdate) { event in
+                    try await cli.play(id: game.id, log: log, skipUpdate: skipUpdate, acceptCloudLoss: acceptCloudLoss) { event in
                         Task { @MainActor in self.handle(event, for: game) }
                     }
                 } else {
@@ -450,12 +453,14 @@ final class LibraryModel {
                             updateNotices[appid] = L10n.string("La mise à jour a échoué : le jeu est lancé dans sa version installée.")
                         }
                     }
-                    try await cli.play(id: game.id, log: log)
+                    try await cli.play(id: game.id, log: log, acceptCloudLoss: acceptCloudLoss)
                 }
             } catch is CancellationError {
                 // la mise a jour a ete arretee : le jeu n'est pas lance
             } catch CidreError.updateRunning {
                 lastError = CidreError.updateRunning.localizedDescription
+            } catch let CidreError.cloudSavesAtRisk(files) {
+                cloudGuard = CloudGuardRequest(game: game, files: files)
             } catch {
                 lastError = LaunchFailureExplainer.explain(log: log, fallback: error.localizedDescription)
             }
@@ -891,4 +896,17 @@ final class LibraryModel {
 
     static let logsDirectory = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/Verger")
+}
+
+/// Ce que Verger montre quand Cidre refuse un lancement pour proteger le nuage
+/// Steam : quelles sauvegardes manquent, qu'elles restent dans le nuage, et ce
+/// que « Lancer quand meme » ferait.
+struct CloudGuardRequest {
+    let game: Game
+    let files: [String]
+
+    var message: String {
+        let list = files.isEmpty ? L10n.string("(voir le journal du lancement)") : files.map { "• " + $0 }.joined(separator: "\n")
+        return L10n.format("Steam croit ces sauvegardes de %@ présentes sur ce Mac, mais elles n'y sont plus :\n%@\n\nElles sont toujours dans le nuage Steam. Si tu lances le jeu quand même, Steam les retirera du nuage quand tu le quitteras. Pour les garder, remets-les à leur place avant de jouer (elles se téléchargent depuis la page Steam Cloud de ton compte).", game.name, list)
+    }
 }

@@ -94,6 +94,17 @@ struct LibraryView: View {
                 // la fenetre « Installer un jeu Steam » propose deja la connexion
                 if !installingFromSteam { loggingIn = true }
             }
+            // Cidre a refuse le lancement pour proteger le nuage Steam (code 7)
+            .alert(
+                "Des sauvegardes manquent sur ce Mac",
+                isPresented: Binding(get: { library.cloudGuard != nil }, set: { if !$0 { library.cloudGuard = nil } }),
+                presenting: library.cloudGuard
+            ) { request in
+                Button("Annuler", role: .cancel) {}
+                Button("Lancer quand même", role: .destructive) { library.play(request.game, acceptCloudLoss: true) }
+            } message: { request in
+                Text(verbatim: request.message)
+            }
             .alert("Une erreur est survenue", isPresented: errorShown) {
                 Button("OK", role: .cancel) {}
                 // le message s'efface a la fermeture de l'alerte : on le garde

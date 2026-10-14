@@ -48,6 +48,8 @@ IGNORES = {
     # le rapport de jeu : son format est celui des fiches de Cidre, en francais
     "<!-- cidre-rapport v1 appid=%@ -->",
     "partageProposes", "[[rapports]]", "[profil]", "Rapport de jeu : %@ (%@)", "Apple ", "Go",
+    # un marqueur du journal de Cidre (tests/garde_nuage_steam.sh), pas un texte d'interface
+    "que Steam croit sur ce Mac n'y sont plus :",
 }
 
 LITTERAL = re.compile(r'"((?:[^"\\]|\\.)*)"')

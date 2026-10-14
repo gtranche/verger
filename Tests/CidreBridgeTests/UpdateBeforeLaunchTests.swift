@@ -208,6 +208,10 @@ struct UpdateBeforeLaunchTests {
                  sleep 30 ;;
               4) echo "Une mise a jour de ce jeu est deja en cours (processus 42)" >&2; exit 4 ;;
               5) echo '{"evenement":"lancement"}'; echo "    cause probable : x" >&2; exit 1 ;;
+              7) echo '{"evenement":"lancement"}'
+                 case "$*" in *--accord-nuage*) exit 0 ;; esac
+                 printf '    saves: Steam Cloud : 2 sauvegarde(s) que Steam croit sur ce Mac n%sy sont plus :\n                 Studio/Jeu/slot.sav\n                 Studio/Jeu/reglages.ini\n    saves: a la sortie du jeu, le client Steam les retirerait du nuage : lancement arrete.\n' "'" >&2
+                 exit 7 ;;
             esac
             """#.write(to: script, atomically: true, encoding: .utf8)
         let cli = CidreCLI(executable: script)
@@ -247,6 +251,18 @@ struct UpdateBeforeLaunchTests {
             #expect(command == "play 5" && status == 1)
             #expect(try String(contentsOf: log, encoding: .utf8).contains("cause probable : x"))
         }
+
+        // garde du nuage (code 7) : une erreur qui porte les sauvegardes manquantes,
+        // lues au journal ; avec l'accord, `--accord-nuage` et le jeu part
+        await #expect(throws: CidreError.cloudSavesAtRisk(files: ["Studio/Jeu/slot.sav", "Studio/Jeu/reglages.ini"])) {
+            try await cli.play(id: "7", log: log) { _ in }
+        }
+        try await cli.play(id: "7", log: log, acceptCloudLoss: true) { _ in }
+        #expect(try String(contentsOf: dir.appendingPathComponent("appels.txt"), encoding: .utf8).hasSuffix("play 7 --json\nplay 7 --json --accord-nuage\n"))
+        await #expect(throws: CidreError.cloudSavesAtRisk(files: ["Studio/Jeu/slot.sav", "Studio/Jeu/reglages.ini"])) {
+            try await cli.play(id: "7", log: log)
+        }
+        #expect(CidreError.cloudSavesAtRisk(files: ["a.sav"]).errorDescription?.contains("a.sav") == true)
 
         // a l'ouverture de Verger : rafraichir en fond, sans rien attendre ni lever
         await cli.refreshUpdatesInBackground()
