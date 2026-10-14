@@ -671,6 +671,12 @@ final class LibraryModel {
         updates = Dictionary(found.filter(\.needsUpdate).map { ($0.appid, $0) }, uniquingKeysWith: { _, last in last })
     }
 
+    /// Demande a Cidre de rafraichir en fond ce qu'il sait des builds publies,
+    /// pour que le premier lancement n'attende pas Steam. Rend la main tout de suite.
+    func warmUpdates() async {
+        await cli?.refreshUpdatesInBackground()
+    }
+
     /// Un jeu du client Steam se met a jour dans Steam : on ouvre ses telechargements.
     func openSteamDownloads() {
         if let url = URL(string: "steam://open/downloads") { NSWorkspace.shared.open(url) }

@@ -115,6 +115,9 @@ struct LibraryView: View {
             }
             .task {
                 await library.reload()
+                // Cidre rafraichit en fond ce qu'il sait des builds publies : le
+                // premier « Jouer » n'attendra pas Steam
+                Task { await library.warmUpdates() }
                 // sans attendre le prochain tour de la boucle ci-dessus, qui a
                 // demarre avant que Cidre ne soit localise
                 await library.refreshRunning()

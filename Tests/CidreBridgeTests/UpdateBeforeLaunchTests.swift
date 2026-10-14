@@ -248,6 +248,10 @@ struct UpdateBeforeLaunchTests {
             #expect(try String(contentsOf: log, encoding: .utf8).contains("cause probable : x"))
         }
 
+        // a l'ouverture de Verger : rafraichir en fond, sans rien attendre ni lever
+        await cli.refreshUpdatesInBackground()
+        #expect(try String(contentsOf: dir.appendingPathComponent("appels.txt"), encoding: .utf8).hasSuffix("updates --fond\n"))
+
         // arreter pendant la mise a jour : la commande s'arrete, sans attendre
         let started = Date()
         let running = Events()

@@ -266,6 +266,14 @@ public struct CidreCLI: Sendable {
         try await json(["updates", "--json"] + (refresh ? ["--refresh"] : []))
     }
 
+    /// `cidre updates --fond` : Cidre rafraichit en arriere-plan ce qu'il sait
+    /// des builds publies (si c'est perime) et rend la main aussitot ; le premier
+    /// « Jouer » n'aura pas a attendre Steam. Un Cidre d'avant ne connait pas
+    /// l'option : il fait la meme demande, en attendant -- sans gravite ici.
+    public func refreshUpdatesInBackground() async {
+        _ = try? await run(["updates", "--fond"])
+    }
+
     /// `cidre dl <appid> <platform>` : telecharge (ou met a jour) le jeu dans le dossier Cidre,
     /// en rapportant l'avancement. Annuler la tache arrete le telechargement
     /// (SteamCMD le reprendra ou il en etait).
