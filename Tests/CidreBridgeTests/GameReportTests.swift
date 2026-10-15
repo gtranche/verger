@@ -19,6 +19,7 @@ import Testing
         [[rapports]]
         date = "2026-10-11"
         machine = "M1 Max 32 Go"
+        voie = "dxmt"
         cidre_version = "1.4.6"
         etat = "or"
         fps_menu = 120

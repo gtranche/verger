@@ -87,12 +87,16 @@ public struct GameInfo: Decodable, Sendable {
     /// Ou en est la mise a jour du jeu (`"maj"`), d'apres ce que Cidre sait deja.
     /// `nil` : jeu que Cidre ne met pas a jour lui-meme, ou Cidre <= 1.5.9.
     public let update: UpdateStatus?
+    /// Ce que la base de profils dit de la compatibilite du jeu, sur ce Mac et
+    /// par famille de Mac. `nil` : pas de fiche, ou une fiche qui n'en dit rien.
+    public let compatibility: GameCompatibility?
 
     enum CodingKeys: String, CodingKey {
         case savesSynced = "sauvegardes"
         case options
         case overrides = "options_perso"
         case update = "maj"
+        case profile = "fiche"
     }
 
     public init(from decoder: Decoder) throws {
@@ -103,6 +107,8 @@ public struct GameInfo: Decodable, Sendable {
         let overrides = try c.decodeIfPresent([String: OptionValue].self, forKey: .overrides) ?? [:]
         overridden = Set(overrides.keys.compactMap(LaunchOptions.Key.init(rawValue:)))
         update = try c.decodeIfPresent(UpdateStatus.self, forKey: .update)
+        // une fiche illisible ne doit pas cacher le reste du jeu
+        compatibility = (try? c.decodeIfPresent(GameCompatibility.self, forKey: .profile)).flatMap { $0.isEmpty ? nil : $0 }
     }
 
     /// Une valeur d'option, dont seul le nom de la cle nous interesse ici.

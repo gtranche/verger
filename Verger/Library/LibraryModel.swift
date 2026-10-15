@@ -325,7 +325,7 @@ final class LibraryModel {
     /// diagnostic anonymise. Chaque morceau que ce Cidre ne sait pas donner
     /// reste `nil` ; le rapport part sans lui.
     func gameReportContext(for game: Game) async -> GameReport.Context {
-        var context = GameReport.Context(machine: SystemInfo.current.machineLabel)
+        var context = GameReport.Context(machine: SystemInfo.current.machineLabel, gpuFamily: MetalFamily.current)
         if let fresh = try? await cli?.status() { runtimeStatus = fresh }
         context.cidreVersion = runtimeStatus?.version
         context.options = (try? await cli?.info(id: game.id))?.options

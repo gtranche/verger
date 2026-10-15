@@ -140,6 +140,11 @@ struct GameDetail: View {
                 }
             }
 
+            // ce que la base de profils de Cidre dit du jeu, pour ce Mac
+            if game.launch != .native, let compatibility = info?.compatibility {
+                CompatibilitySection(compatibility: compatibility)
+            }
+
             if game.launch == .native {
                 Section("Options de lancement") {
                     Text("Jeu natif : lancé par Steam, sans la pile Cidre.")

@@ -34,12 +34,25 @@ public struct GameReport: Equatable, Sendable {
         public var options: LaunchOptions?
         /// Le diagnostic de l'installation, deja anonymise.
         public var diagnostic: String?
+        /// La famille Metal de la carte graphique (`MTLGPUFamilyApple<N>` : 7 = M1,
+        /// 8 = M2, 9 = M3 et M4), le fait `famille_gpu` des fiches.
+        public var gpuFamily: Int?
 
-        public init(machine: String? = nil, cidreVersion: String? = nil, options: LaunchOptions? = nil, diagnostic: String? = nil) {
+        public init(machine: String? = nil, cidreVersion: String? = nil, options: LaunchOptions? = nil, diagnostic: String? = nil,
+                    gpuFamily: Int? = nil) {
             self.machine = machine
             self.cidreVersion = cidreVersion
             self.options = options
             self.diagnostic = diagnostic
+            self.gpuFamily = gpuFamily
+        }
+
+        /// La voie de rendu du lancement, comme les fiches la nomment : `d3d12`
+        /// avec dx12, sinon le rendu Direct3D 11 (`dxmt`, `dxvk`). `nil` : options inconnues.
+        public var route: String? {
+            guard let options else { return nil }
+            if options.dx12 == true { return "d3d12" }
+            return options.d3d11.flatMap { ["dxmt", "dxvk"].contains($0) ? $0 : nil }
         }
     }
 
@@ -98,6 +111,9 @@ public struct GameReport: Equatable, Sendable {
     public var toml: String {
         var lines = ["[[rapports]]", Self.line("date", Self.quoted(date))]
         if let machine = context.machine, !machine.isEmpty { lines.append(Self.line("machine", Self.quoted(machine))) }
+        // de quoi ranger le rapport par famille de Mac et par voie ([[compat.machines]] de la fiche)
+        if let family = context.gpuFamily { lines.append(Self.line("famille_gpu", String(family))) }
+        if let route = context.route { lines.append(Self.line("voie", Self.quoted(route))) }
         if let version = context.cidreVersion, !version.isEmpty { lines.append(Self.line("cidre_version", Self.quoted(version))) }
         lines.append(Self.line("etat", Self.quoted(verdict.rawValue)))
         if let fpsMenu { lines.append(Self.line("fps_menu", String(fpsMenu))) }
