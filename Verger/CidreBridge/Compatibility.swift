@@ -13,6 +13,62 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
     /// Toutes les entrees par famille, dans l'ordre de la fiche ; vide pour un
     /// Cidre <= 1.5.11 ou une fiche qui n'en a pas.
     public let families: [Status]
+    /// Le resume ProtonDB importe dans la fiche (`"protondb"`) : des joueurs
+    /// sous Linux (Proton), pas sur Mac. `nil` : la fiche n'en a pas, ou Cidre
+    /// ne le rend pas encore.
+    public let protonDB: ProtonDBSummary?
+    /// Fiche provisoire (`"origine":"provisoire"`) : ecrite par Cidre a
+    /// l'installation d'un jeu que la base ne connaissait pas, avec le seul
+    /// resume ProtonDB.
+    public let provisional: Bool
+
+    /// Le resume public de ProtonDB, tel que la fiche le porte (`[compat.protondb]`).
+    public struct ProtonDBSummary: Decodable, Equatable, Sendable {
+        public let tier: ProtonDBTier
+        /// La tendance recente (`"tendance"`), le meilleur palier rapporte.
+        public let trendingTier: ProtonDBTier?
+        public let bestTier: ProtonDBTier?
+        /// Le nombre de rapports derriere le palier ; `nil` : inconnu.
+        public let reports: Int?
+        /// `strong`, `good`, `moderate`, `low`... tel quel.
+        public let confidence: String?
+        public let url: URL?
+
+        enum CodingKeys: String, CodingKey {
+            case tier = "palier", trendingTier = "tendance", bestTier = "meilleur_palier"
+            case reports = "rapports", confidence = "confiance", url
+        }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            // sans palier (fiche nourrie par l'export seul), pas de resume a montrer
+            guard let tier = (try? c.decodeIfPresent(String.self, forKey: .tier)).flatMap(ProtonDBTier.init(rawValue:)) else {
+                throw DecodingError.keyNotFound(CodingKeys.tier, .init(codingPath: c.codingPath, debugDescription: "pas de palier"))
+            }
+            self.tier = tier
+            trendingTier = (try? c.decodeIfPresent(String.self, forKey: .trendingTier)).flatMap(ProtonDBTier.init(rawValue:))
+            bestTier = (try? c.decodeIfPresent(String.self, forKey: .bestTier)).flatMap(ProtonDBTier.init(rawValue:))
+            reports = try? c.decodeIfPresent(Int.self, forKey: .reports)
+            confidence = try? c.decodeIfPresent(String.self, forKey: .confidence)
+            url = (try? c.decodeIfPresent(String.self, forKey: .url)).flatMap(URL.init(string:))
+        }
+    }
+
+    /// Les paliers de ProtonDB.
+    public enum ProtonDBTier: String, Sendable {
+        case platinum, gold, silver, bronze, borked, pending
+
+        public var title: String {
+            switch self {
+            case .platinum: L10n.string("Platine")
+            case .gold: L10n.string("Or")
+            case .silver: L10n.string("Argent")
+            case .bronze: L10n.string("Bronze")
+            case .borked: L10n.string("Ne marche pas")
+            case .pending: L10n.string("En attente")
+            }
+        }
+    }
 
     /// Un etat de compatibilite : `[compat]` ou une entree `[[compat.machines]]`.
     public struct Status: Decodable, Equatable, Sendable {
@@ -105,6 +161,7 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case here = "compat", reference = "compat_reference", families = "compat_machines"
+        case protonDB = "protondb", origin = "origine"
     }
 
     public init(from decoder: Decoder) throws {
@@ -113,12 +170,16 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
         here = Self.status(try? c.decodeIfPresent(Status.self, forKey: .here))
         reference = Self.status(try? c.decodeIfPresent(Status.self, forKey: .reference))
         families = (try? c.decodeIfPresent([Status].self, forKey: .families)) ?? []
+        protonDB = try? c.decodeIfPresent(ProtonDBSummary.self, forKey: .protonDB)
+        provisional = (try? c.decodeIfPresent(String.self, forKey: .origin)) == "provisoire"
     }
 
-    public init(here: Status?, reference: Status?, families: [Status]) {
+    public init(here: Status?, reference: Status?, families: [Status], protonDB: ProtonDBSummary? = nil, provisional: Bool = false) {
         self.here = here
         self.reference = reference
         self.families = families
+        self.protonDB = protonDB
+        self.provisional = provisional
     }
 
     private static func status(_ s: Status?) -> Status? {
@@ -138,6 +199,6 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
         families.filter { $0.applies == false }
     }
 
-    /// La fiche ne dit rien de plus que « non teste ».
-    public var isEmpty: Bool { here == nil && families.isEmpty }
+    /// La fiche ne dit rien de plus que « non teste » (ni resume ProtonDB).
+    public var isEmpty: Bool { here == nil && families.isEmpty && protonDB == nil }
 }

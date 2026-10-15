@@ -3,7 +3,9 @@ import SwiftUI
 
 /// Ce que la base de profils de Cidre dit du jeu : l'etat sur ce Mac (l'entree
 /// de sa famille de Mac quand la fiche en a une), ce qu'elle dit des autres
-/// rendus sur ce Mac (le D3D12 d'un jeu regle en DXMT), et des autres Mac.
+/// rendus sur ce Mac (le D3D12 d'un jeu regle en DXMT), et des autres Mac ;
+/// puis le resume ProtonDB que la fiche reprend (joueurs sous Linux), et si
+/// la fiche n'est que provisoire.
 struct CompatibilitySection: View {
     let compatibility: GameCompatibility
 
@@ -41,6 +43,26 @@ struct CompatibilitySection: View {
                         }
                     }
                 }
+            }
+            if let protonDB = compatibility.protonDB {
+                LabeledContent {
+                    ProtonDBBadge(tier: protonDB.tier)
+                } label: {
+                    Text("ProtonDB (Linux)")
+                    if let reports = protonDB.reports {
+                        Text(verbatim: L10n.format("%lld rapports de joueurs sous Linux, pas sur Mac", reports))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                if let url = protonDB.url {
+                    Link("Voir sur ProtonDB", destination: url)
+                }
+            }
+            if compatibility.provisional {
+                Text("Fiche provisoire : Cidre ne connaît pas encore ce jeu, seul le résumé de ProtonDB est repris. La vraie fiche la remplacera dès qu'elle existera.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -91,6 +113,32 @@ struct VerdictBadge: View {
         case .bronze: .brown
         case .broken: .red
         case .untested: .secondary
+        }
+    }
+}
+
+/// Le palier ProtonDB, en pastille, aux couleurs de ProtonDB.
+struct ProtonDBBadge: View {
+    let tier: GameCompatibility.ProtonDBTier
+
+    var body: some View {
+        Text(verbatim: tier.title)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .foregroundStyle(tint)
+            .background(tint.opacity(0.15), in: Capsule())
+            .help(L10n.string("Le palier de ProtonDB : comment le jeu tourne sous Linux avec Proton. Un indice pour Cidre, pas une mesure sur Mac."))
+    }
+
+    private var tint: Color {
+        switch tier {
+        case .platinum: .teal
+        case .gold: .yellow
+        case .silver: .gray
+        case .bronze: .brown
+        case .borked: .red
+        case .pending: .secondary
         }
     }
 }

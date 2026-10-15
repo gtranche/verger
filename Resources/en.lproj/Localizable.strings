@@ -439,3 +439,10 @@
 "Direct3D 11 (DXVK)" = "Direct3D 11 (DXVK)";
 "Direct3D 12" = "Direct3D 12";
 "WineD3D" = "WineD3D";
+"Platine" = "Platinum";
+"En attente" = "Pending";
+"ProtonDB (Linux)" = "ProtonDB (Linux)";
+"%lld rapports de joueurs sous Linux, pas sur Mac" = "%lld reports from Linux players, not on Mac";
+"Voir sur ProtonDB" = "View on ProtonDB";
+"Fiche provisoire : Cidre ne connaît pas encore ce jeu, seul le résumé de ProtonDB est repris. La vraie fiche la remplacera dès qu'elle existera." = "Provisional profile: Cidre doesn't know this game yet, only the ProtonDB summary is shown. The real profile will replace it as soon as it exists.";
+"Le palier de ProtonDB : comment le jeu tourne sous Linux avec Proton. Un indice pour Cidre, pas une mesure sur Mac." = "The ProtonDB tier: how the game runs on Linux with Proton. A hint for Cidre, not a measurement on Mac.";

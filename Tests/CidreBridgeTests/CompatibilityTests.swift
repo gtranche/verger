@@ -62,3 +62,39 @@ private let infoM4JSON = """
     options.dx12 = nil
     #expect(GameReport.Context(options: options).route == nil && GameReport.Context().route == nil)
 }
+
+// `cidre info 2358720 --json` juste apres `cidre dl` : le jeu n'a pas de fiche
+// dans la base, Cidre en a ecrit une provisoire avec le resume ProtonDB.
+private let infoProvisoireJSON = """
+    {"appid":2358720,"nom":"Black Myth: Wukong","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/jeux/bmw",
+     "fiche":{"jeu":{"appid":2358720,"nom":"Black Myth: Wukong","plateformes_steam":"windows","provisoire":true},"cidre":{},
+      "compat":{"etat":"non-teste","date":"2026-10-15"},
+      "protondb":{"palier":"gold","tendance":"gold","meilleur_palier":"platinum","confiance":"strong","rapports":209,"score":81,"source":"protondb","date":"2026-10-15","url":"https://www.protondb.com/app/2358720"},
+      "reglages_jeu":[],"variantes":[],"compat_reference":{"etat":"non-teste","date":"2026-10-15"},"compat_machines":[],"origine":"provisoire","rapports":0}}
+    """
+
+@Test func uneFicheProvisoireMontreLeResumeProtonDB() throws {
+    let compat = try #require(try JSONDecoder().decode(GameInfo.self, from: Data(infoProvisoireJSON.utf8)).compatibility)
+    #expect(compat.provisional && compat.here == nil && compat.families.isEmpty)
+    let p = try #require(compat.protonDB)
+    #expect(p.tier == .gold && p.trendingTier == .gold && p.bestTier == .platinum)
+    #expect(p.reports == 209 && p.confidence == "strong")
+    #expect(p.url?.absoluteString == "https://www.protondb.com/app/2358720")
+}
+
+@Test func leResumeProtonDBDUneFicheDeLaBase() throws {
+    // une fiche du catalogue : origine cache, palier ProtonDB ; une autre sans
+    // palier (nourrie par l'export seul) : rien a montrer de ProtonDB
+    let cache = infoProvisoireJSON.replacingOccurrences(of: #""origine":"provisoire""#, with: #""origine":"cache""#)
+    let compat = try #require(try JSONDecoder().decode(GameInfo.self, from: Data(cache.utf8)).compatibility)
+    #expect(!compat.provisional && compat.protonDB?.tier == .gold)
+    let sansPalier = infoProvisoireJSON.replacingOccurrences(of: #""palier":"gold","#, with: "")
+        .replacingOccurrences(of: #""origine":"provisoire""#, with: #""origine":"cache""#)
+    #expect(try JSONDecoder().decode(GameInfo.self, from: Data(sansPalier.utf8)).compatibility == nil)
+    // un palier inconnu ne fait pas tomber le reste de la fiche : il ne se montre pas
+    let inconnu = infoM4JSON.replacingOccurrences(of: #""reglages_jeu":[]"#,
+                                                  with: #""protondb":{"palier":"mithril","rapports":3},"reglages_jeu":[]"#)
+    let c2 = try #require(try JSONDecoder().decode(GameInfo.self, from: Data(inconnu.utf8)).compatibility)
+    #expect(c2.protonDB == nil && c2.here?.verdict == .silver && !c2.provisional)
+    #expect(GameCompatibility.ProtonDBTier.platinum.title == "Platine")
+}
