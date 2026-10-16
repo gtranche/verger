@@ -338,11 +338,13 @@ final class LibraryModel {
     // MARK: Partager mon resultat
 
     /// Ce qu'un rapport de jeu dit de la machine et de l'installation : la puce
-    /// et la memoire, la version de Cidre, le profil effectif du jeu et le
+    /// et la memoire, le modele et la version de macOS, la version de Cidre, le profil effectif du jeu et le
     /// diagnostic anonymise. Chaque morceau que ce Cidre ne sait pas donner
     /// reste `nil` ; le rapport part sans lui.
     func gameReportContext(for game: Game) async -> GameReport.Context {
-        var context = GameReport.Context(machine: SystemInfo.current.machineLabel, gpuFamily: MetalFamily.current)
+        let system = SystemInfo.current
+        var context = GameReport.Context(machine: system.machineLabel, model: system.model, macOS: system.macOS,
+                                         gpuFamily: MetalFamily.current)
         if let fresh = try? await cli?.status() { runtimeStatus = fresh }
         context.cidreVersion = runtimeStatus?.version
         context.options = (try? await cli?.info(id: game.id))?.options

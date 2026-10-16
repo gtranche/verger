@@ -29,6 +29,11 @@ public struct GameReport: Equatable, Sendable {
     public struct Context: Equatable, Sendable {
         /// « M1 Max 32 Go »
         public var machine: String?
+        /// L'identifiant du modele (« Mac15,9 ») : la puce ne dit ni l'ecran ni le
+        /// nombre de coeurs GPU, le modele les situe.
+        public var model: String?
+        /// La version de macOS (« 26.5.2 »), le fait `macos_version` de Cidre.
+        public var macOS: String?
         public var cidreVersion: String?
         /// Le profil effectif du jeu : ses options de lancement resolues.
         public var options: LaunchOptions?
@@ -38,9 +43,11 @@ public struct GameReport: Equatable, Sendable {
         /// 8 = M2, 9 = M3 et M4), le fait `famille_gpu` des fiches.
         public var gpuFamily: Int?
 
-        public init(machine: String? = nil, cidreVersion: String? = nil, options: LaunchOptions? = nil, diagnostic: String? = nil,
-                    gpuFamily: Int? = nil) {
+        public init(machine: String? = nil, model: String? = nil, macOS: String? = nil, cidreVersion: String? = nil,
+                    options: LaunchOptions? = nil, diagnostic: String? = nil, gpuFamily: Int? = nil) {
             self.machine = machine
+            self.model = model
+            self.macOS = macOS
             self.cidreVersion = cidreVersion
             self.options = options
             self.diagnostic = diagnostic
@@ -111,6 +118,8 @@ public struct GameReport: Equatable, Sendable {
     public var toml: String {
         var lines = ["[[rapports]]", Self.line("date", Self.quoted(date))]
         if let machine = context.machine, !machine.isEmpty { lines.append(Self.line("machine", Self.quoted(machine))) }
+        if let model = context.model, !model.isEmpty { lines.append(Self.line("modele", Self.quoted(model))) }
+        if let macOS = context.macOS, !macOS.isEmpty { lines.append(Self.line("macos_version", Self.quoted(macOS))) }
         // de quoi ranger le rapport par famille de Mac et par voie ([[compat.machines]] de la fiche)
         if let family = context.gpuFamily { lines.append(Self.line("famille_gpu", String(family))) }
         if let route = context.route { lines.append(Self.line("voie", Self.quoted(route))) }

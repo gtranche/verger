@@ -54,8 +54,9 @@ private let infoM4JSON = """
     var options = LaunchOptions()
     options.dx12 = true
     options.d3d11 = "dxmt"
-    let report = GameReport(date: "2026-10-15", context: .init(machine: "M4 24 Go", options: options, gpuFamily: 9), verdict: .bronze, fpsGame: 19)
-    #expect(report.toml == "[[rapports]]\ndate = \"2026-10-15\"\nmachine = \"M4 24 Go\"\nfamille_gpu = 9\nvoie = \"d3d12\"\netat = \"bronze\"\nfps_jeu = 19\n")
+    let report = GameReport(date: "2026-10-15", context: .init(machine: "M4 24 Go", model: "Mac16,2", macOS: "27.0.1", options: options, gpuFamily: 9),
+                            verdict: .bronze, fpsGame: 19)
+    #expect(report.toml == "[[rapports]]\ndate = \"2026-10-15\"\nmachine = \"M4 24 Go\"\nmodele = \"Mac16,2\"\nmacos_version = \"27.0.1\"\nfamille_gpu = 9\nvoie = \"d3d12\"\netat = \"bronze\"\nfps_jeu = 19\n")
     options.dx12 = false
     #expect(GameReport.Context(options: options).route == "dxmt")
     options.d3d11 = nil
