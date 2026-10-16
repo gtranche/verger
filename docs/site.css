@@ -480,7 +480,7 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
   .filtres { position: sticky; top: 0; z-index: 2; }
 }
 .recherche { flex: 1 1 12rem; }
-.recherche input, .provenance select {
+.recherche input, .provenance select, .mon-mac select {
   width: 100%;
   font: inherit;
   font-size: 1rem;           /* 16px : Safari sur iPhone ne zoome pas */
@@ -491,6 +491,8 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
   padding: 0.55rem 1rem;
 }
 .provenance select { width: auto; padding-right: 2rem; }
+.mon-mac { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.9rem; }
+.mon-mac select { width: auto; padding-right: 2rem; font-weight: 600; border-color: var(--accent); }
 .recherche input::placeholder { color: var(--encre-douce); }
 
 .etats { display: flex; flex-wrap: wrap; gap: 0.35rem; }
@@ -516,7 +518,8 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
 }
 .point { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--c, var(--encre-douce)); }
 
-.compte { margin-top: 1.25rem; font-size: 0.9rem; color: var(--encre-douce); }
+.note-mac { margin-top: 1rem; max-width: 52rem; font-size: 0.9rem; color: var(--encre-douce); }
+.compte { margin-top: 0.6rem; font-size: 0.9rem; color: var(--encre-douce); }
 
 .jeux { margin: 0.5rem 0 0; padding: 0; list-style: none; }
 .jeu { padding-block: 1.1rem; border-top: 1px solid var(--trait); }
@@ -545,6 +548,28 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
 .etat-bronze, .palier-bronze { --c: var(--bronze); --f: var(--bronze-fond); }
 .etat-ko, .palier-borked { --c: var(--ko); --f: var(--ko-fond); }
 .palier-platinum { --c: var(--platine); --f: var(--platine-fond); }
+/* une note importee n'a pas de Mac derriere : contour tirete, jamais pleine */
+.palier.importe { background: none; border: 1px dashed var(--c, var(--trait)); font-weight: 500; }
+.jeu .inconnu { color: var(--encre-douce); font-style: italic; }
+.provenance-etat { margin-top: 0.4rem; font-size: 0.85rem; color: var(--encre-douce); }
+.provenance-etat.ecart { color: var(--ambre); font-weight: 600; }
+.ici {
+  font-size: 0.75rem; font-weight: 700; color: var(--sur-accent); background: var(--accent);
+  padding: 0.05rem 0.5rem; border-radius: 999px;
+}
+.condition { font-size: 0.82rem; color: var(--encre-douce); }
+.sur-mac { margin-top: 0.7rem; padding: 0.5rem 0 0.5rem 1rem; border-left: 2px solid var(--accent); font-size: 0.92rem; }
+.sur-mac h4, .sur-mac > summary { font-size: 0.92rem; font-weight: 600; color: var(--accent); }
+.sur-mac > summary { cursor: pointer; }
+.sur-mac.variantes:is(details) { border-left-color: var(--trait); }
+.sur-mac .marques { margin-top: 0.35rem; }
+.sur-mac .details { margin-top: 0.35rem; }
+.sur-mac h4 { margin: 0; }
+.sur-mac .details + .details { border-top: 1px dashed var(--trait); padding-top: 0.35rem; }
+.jeu .mesure { margin-top: 0.2rem; font-size: 0.85rem; color: var(--encre-douce); }
+.jeu code { font: 0.82rem var(--mono); overflow-wrap: anywhere; }
+.sur-mac .details code { overflow-wrap: normal; word-break: normal; }
+.sur-mac .details dd { min-width: 0; }
 .point.etat-or, .point.etat-argent, .point.etat-bronze, .point.etat-ko { background: var(--c); }
 
 .jeu .details {
@@ -578,8 +603,12 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
   cursor: pointer;
 }
 
+.bouton-suite[hidden] { display: none; }
+
 @media (max-width: 30rem) {
   .jeu .tete { flex-direction: column; gap: 0.1rem; }
   .provenance { flex: 1 1 100%; }
   .provenance select { width: 100%; }
+  .mon-mac { flex: 1 1 100%; }
+  .mon-mac select { flex: 1; }
 }

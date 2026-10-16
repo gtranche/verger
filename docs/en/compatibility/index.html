@@ -60,6 +60,10 @@
     <p class="legende">The ProtonDB tier says how the game runs on Linux with Proton: a hint for Cidre, not a measurement on a Mac. Notes come from Cidre's profiles and are written in French. Data as of <span data-date>—</span>.</p>
 
     <div class="filtres" role="search">
+      <label class="mon-mac">
+        <span>My Mac</span>
+        <select data-mac></select>
+      </label>
       <label class="recherche">
         <span class="visuel-cache">Search for a game</span>
         <input type="search" data-recherche placeholder="Search a game or an appid" autocomplete="off" spellcheck="false">
@@ -83,6 +87,7 @@
       </label>
     </div>
 
+    <p class="note-mac" data-note-mac></p>
     <p class="compte" data-compte aria-live="polite"></p>
     <ul class="jeux" data-liste></ul>
     <button type="button" class="bouton-suite" data-suite hidden></button>

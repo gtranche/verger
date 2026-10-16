@@ -60,6 +60,10 @@
     <p class="legende">Le palier ProtonDB dit comment le jeu tourne sous Linux avec Proton&#8239;: un indice pour Cidre, pas une mesure sur Mac. Données du <span data-date>—</span>.</p>
 
     <div class="filtres" role="search">
+      <label class="mon-mac">
+        <span>Mon Mac</span>
+        <select data-mac></select>
+      </label>
       <label class="recherche">
         <span class="visuel-cache">Chercher un jeu</span>
         <input type="search" data-recherche placeholder="Chercher un jeu ou un appid" autocomplete="off" spellcheck="false">
@@ -83,6 +87,7 @@
       </label>
     </div>
 
+    <p class="note-mac" data-note-mac></p>
     <p class="compte" data-compte aria-live="polite"></p>
     <ul class="jeux" data-liste></ul>
     <button type="button" class="bouton-suite" data-suite hidden></button>

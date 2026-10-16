@@ -18,7 +18,11 @@ Pour un jeu du depot, l'etat, la voie et les notes sont ceux du depot (une
 correction recente passe devant l'archive, comme dans fiche_profil.sh chemin) ;
 les resumes importes (ProtonDB, AppleGamingWiki) sont pris la ou ils sont.
 L'etat affiche est celui de Verger : le `[compat]` de la fiche (machine de
-reference) et les entrees `[[compat.machines]]` famille par famille. Rien du
+reference) et les entrees `[[compat.machines]]` famille par famille, avec leur
+condition `si` ; la page choisit celle du Mac du visiteur (selecteur « Mon Mac »)
+en evaluant ces conditions comme Cidre. Elle recoit aussi les variantes
+`[[machine]]` (options et reglages du jeu propres a certaines machines) et les
+`[[rapports]]` des joueurs, avec la machine de chacun. Rien du
 texte des wikis n'est repris (CC BY-NC-SA) : seulement les valeurs de leurs
 modeles, comme le fait l'import de Cidre.
 
@@ -93,6 +97,68 @@ def voie(fiche):
     return texte(cidre.get("d3d11")) or texte(fiche.get("compat", {}).get("voie"))
 
 
+def options(cidre):
+    """Des options de lancement en `cle=valeur` separes par des espaces, comme `options` de [[compat.machines]]."""
+    bouts = []
+    for k, v in cidre.items():
+        if isinstance(v, bool):
+            bouts.append(f"{k}={'true' if v else 'false'}")
+        elif isinstance(v, (int, float, str)) and str(v).strip():
+            bouts.append(f"{k}={v}")
+    return " ".join(bouts)
+
+
+def variantes(fiche):
+    """Les blocs [[machine]] : condition, options de lancement, reglages du jeu (fichier et valeurs)."""
+    sortie = []
+    for m in fiche.get("machine", []):
+        if not isinstance(m, dict) or not texte(m.get("si")):
+            continue
+        v = {"si": m["si"].strip()}
+        cidre = m.get("cidre", {})
+        if isinstance(cidre, dict) and options(cidre):
+            v["options"] = options(cidre)
+            # ce qui change la voie de rendu sur ces machines
+            if isinstance(cidre.get("dx12"), bool):
+                v["dx12"] = cidre["dx12"]
+            if texte(cidre.get("d3d11")):
+                v["d3d11"] = cidre["d3d11"].strip()
+        reglages = []
+        for r in m.get("reglages_jeu", []):
+            if not isinstance(r, dict) or not isinstance(r.get("valeurs"), dict):
+                continue
+            fichier = texte(r.get("fichier")) or ""
+            reglages.append({
+                "fichier": fichier.rsplit("/", 1)[-1],
+                "valeurs": " ".join(f"{k}={val}" for k, val in r["valeurs"].items()),
+            })
+        if reglages:
+            v["reglages"] = reglages
+        if len(v) > 1:
+            sortie.append(v)
+    return sortie
+
+
+def rapports(fiche):
+    """Les [[rapports]] des joueurs, avec la machine de chacun (plus recent d'abord)."""
+    sortie = []
+    for r in fiche.get("rapports", []):
+        if not isinstance(r, dict) or r.get("etat") not in ETATS:
+            continue
+        x = {"etat": r["etat"]}
+        x.update(mesure(r))
+        for cle in ("voie", "macos_version", "modele"):
+            if texte(r.get(cle)):
+                x[cle] = r[cle].strip()
+        if entier(r.get("famille_gpu")):
+            x["famille"] = r["famille_gpu"]
+        if texte(r.get("incident")) and r["incident"].startswith("https://github.com/"):
+            x["incident"] = r["incident"].strip()
+        sortie.append(x)
+    sortie.sort(key=lambda x: x.get("date", ""), reverse=True)
+    return sortie
+
+
 def etat(compat):
     e = compat.get("etat")
     return e if e in ETATS else "non-teste"
@@ -145,6 +211,8 @@ def jeu(appid, depot, catalogue):
             if not isinstance(m, dict) or m.get("etat") not in ETATS:
                 continue
             f = {"nom": texte(m.get("nom")) or "", "etat": m["etat"]}
+            if texte(m.get("si")):
+                f["si"] = m["si"].strip()
             if texte(m.get("voie")):
                 f["voie"] = m["voie"].strip()
             if texte(m.get("options")):
@@ -153,6 +221,12 @@ def jeu(appid, depot, catalogue):
             familles.append(f)
         if familles:
             sortie["familles"] = familles
+    if depot:
+        # ce que la fiche regle autrement selon la machine, et ce qu'en disent les joueurs
+        if variantes(depot):
+            sortie["variantes"] = variantes(depot)
+        if rapports(depot):
+            sortie["rapports"] = rapports(depot)
     # les resumes importes : dans la fiche du depot s'il les a, sinon dans l'archive
     for source in (fiche, importe):
         p = source.get("compat", {}).get("protondb", {})
