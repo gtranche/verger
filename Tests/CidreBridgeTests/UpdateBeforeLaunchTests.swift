@@ -89,6 +89,27 @@ struct UpdateBeforeLaunchTests {
         #expect(other.explanation?.contains("0x6") == true)
     }
 
+    /// Essai reel du 16/10 (PEAK) : SteamCMD verifie tout, dit « fully
+    /// installed » et laisse le build en retard. Cidre le dit « sans effet » :
+    /// pas de pastille, pas de « Mettre a jour et jouer » qui recommencerait.
+    @Test func noEffectUpdate() throws {
+        let u = try decode(GameUpdate.self, """
+        {"appid": 3527290, "build_installe": 25000000, "build_disponible": 25739797, "a_jour": false, "source": "cidre", "etat":"ignoree","raison":"sans_effet","message":null,"avancement":null,"octets":null,"total":null,"phase":null,"avant_lancement":true,"verifie":1792160284}
+        """)
+        #expect(u.needsUpdate && !u.showsBadge)
+        #expect(u.status?.explanation?.isEmpty == false)
+        #expect(try PlayPlan.plan(for: game(source: "cidre"), update: u) == .play)
+        let option = try decode(GameUpdate.self, #"{"appid":1,"build_installe":5,"build_disponible":7,"a_jour":false,"source":"cidre","etat":"ignoree","raison":"option","avant_lancement":false}"#)
+        #expect(option.showsBadge)
+        let old = try decode(GameUpdate.self, #"{"appid":1,"build_installe":5,"build_disponible":7,"a_jour":false}"#)
+        #expect(old.showsBadge)
+        guard case let .update(event)? = PlayEvent.parse(
+            line: #"{"evenement":"maj","etat":"ignoree","build_installe":25000000,"build_disponible":25739797,"raison":"sans_effet","message":null,"avancement":null,"octets":null,"total":null,"phase":null,"avant_lancement":true,"verifie":1792160284}"#) else {
+            Issue.record("evenement sans effet non lu"); return
+        }
+        #expect(event.state == .ignored && event.reason == .noEffect && event.explanation != nil)
+    }
+
     // MARK: cidre info --json
 
     @Test func infoCarriesUpdateStatus() throws {

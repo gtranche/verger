@@ -556,8 +556,15 @@ final class LibraryModel {
                 if let explanation = status.explanation {
                     updateNotices[appid] = explanation + " " + L10n.string("Le jeu est lancé dans sa version installée.")
                 }
-            case .ignored, .available, .checking:
-                // (laissee de cote : la fiche le dit deja, d'apres `updates`)
+            case .ignored:
+                if updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
+                // Tentee a l'instant sans effet : le joueur doit le savoir, sans
+                // quoi « Mettre a jour et jouer » semble n'avoir rien fait.
+                // (Option coupee, branche beta : la fiche le dit deja.)
+                if status.reason == .noEffect, let explanation = status.explanation {
+                    updateNotices[appid] = explanation + " " + L10n.string("Le jeu est lancé dans sa version installée.")
+                }
+            case .available, .checking:
                 break
             }
         }

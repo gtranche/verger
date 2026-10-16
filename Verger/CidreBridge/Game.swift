@@ -330,6 +330,11 @@ public struct GameUpdate: Decodable, Equatable, Sendable {
     /// donnait pourtant « pas a jour » jusqu'a une demi-heure apres un `cidre dl`.
     public var needsUpdate: Bool { !upToDate && availableBuild > installedBuild }
 
+    /// La pastille « Mise a jour » de la carte : pas pour une mise a jour deja
+    /// tentee sans effet (Steam ne donne pas ce build a ce compte) -- il n'y a
+    /// rien a faire, la fiche du jeu l'explique.
+    public var showsBadge: Bool { needsUpdate && status?.reason != .noEffect }
+
     enum CodingKeys: String, CodingKey {
         case appid, source
         case installedBuild = "build_installe"

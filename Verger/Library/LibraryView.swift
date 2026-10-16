@@ -242,7 +242,7 @@ struct LibraryView: View {
                             isRunning: library.running.contains(game.id),
                             isSelected: selection == game.id,
                             download: game.appid.flatMap { library.downloads[$0] },
-                            updateAvailable: game.appid.map { library.updates[$0] != nil } ?? false,
+                            updateAvailable: game.appid.flatMap { library.updates[$0] }?.showsBadge ?? false,
                             updateHelp: game.appid.flatMap { library.updates[$0] }.map {
                                 L10n.format("Build installé : %@ · publié : %@", String($0.installedBuild), String($0.availableBuild))
                             },
