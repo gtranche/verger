@@ -33,6 +33,17 @@ struct GameDetail: View {
             Section {
                 LabeledContent("Plateforme") { PlatformBadge(game: game) }
                 LabeledContent("Source", value: sourceLabel)
+                // un jeu Cidre vit dans un emplacement : ce Mac, ou un disque
+                if game.source == .cidre, let name = library.locationName(of: game) {
+                    LabeledContent("Emplacement") {
+                        if game.online {
+                            Text(verbatim: name)
+                        } else {
+                            Label(L10n.format("%@ (débranché)", name), systemImage: "externaldrive.badge.xmark")
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
                 if game.sizeBytes > 0 {
                     LabeledContent("Taille", value: L10n.bytes(game.sizeBytes))
                 }
@@ -60,8 +71,20 @@ struct GameDetail: View {
             Section {
                 let update = game.appid.flatMap { library.updates[$0] }
                 let isRunning = library.running.contains(game.id)
+                let move = library.moveStatus(of: game)
                 if let appid = game.appid, let progress = library.downloads[appid] {
                     DownloadStatus(progress: progress) { library.cancelDownload(appid: appid) }
+                } else if let move, move.isRunning {
+                    MoveProgress(status: move) { library.stopMove(game) }
+                } else if !game.online {
+                    // son disque est debranche : rien n'est perdu, il revient au rebranchement
+                    Button {} label: {
+                        Label("Jouer", systemImage: "play.fill").frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(true)
+                    notice(library.offlineMessage(for: game), icon: "externaldrive.badge.xmark")
                 } else if let appid = game.appid, game.source == .cidre, !game.installed {
                     Button {
                         library.download(appid: appid)
@@ -105,7 +128,7 @@ struct GameDetail: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .disabled(!game.installed || isRunning)
+                    .disabled(!game.playable || isRunning)
 
                     // Une mise a jour connue que « Jouer » n'installe pas : un jeu
                     // du dossier Cidre dont l'option est coupee (ou epingle sur une
@@ -129,6 +152,16 @@ struct GameDetail: View {
                 // la mise a jour d'avant lancement n'a pas pu se faire : pourquoi
                 if let appid = game.appid, let text = library.updateNotices[appid] {
                     notice(text)
+                }
+                // un deplacement interrompu ou en echec : l'original est intact
+                if let move, move.isUnfinished, game.online {
+                    notice(move.explanation ?? "", icon: "externaldrive.badge.exclamationmark")
+                    Button("Reprendre le déplacement") { library.resumeMove(game) }
+                        .frame(maxWidth: .infinity)
+                        .disabled(isRunning)
+                    Button("Abandonner le déplacement") { Task { await library.abandonMove(game) } }
+                        .frame(maxWidth: .infinity)
+                        .help("Efface la copie entamée ; le jeu reste où il est.")
                 }
                 // premier lancement, ou cache a refaire : la compilation des shaders
                 if let text = library.shaderNotices[game.id] {
@@ -176,6 +209,12 @@ struct GameDetail: View {
                     NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: game.path)
                 }
                 .frame(maxWidth: .infinity)
+                .disabled(!game.online)
+
+                // un jeu Cidre change d'emplacement (un disque externe et retour)
+                if game.source == .cidre, game.installed || !game.online, library.locationsSupported == true {
+                    MoveMenu(game: game)
+                }
 
                 if game.launch == .cidre {
                     Button("Afficher le journal…") { showingLog = true }
@@ -211,7 +250,8 @@ struct GameDetail: View {
                 case .cidre:
                     Button("Désinstaller…", role: .destructive) { confirmingUninstall = true }
                         .frame(maxWidth: .infinity)
-                        .disabled(game.appid.map { library.downloads[$0] != nil } ?? false)
+                        .disabled((game.appid.map { library.downloads[$0] != nil } ?? false)
+                            || !game.online || library.moveStatus(of: game)?.isRunning == true)
                 case .steam:
                     Button("Désinstaller…", role: .destructive) { confirmingUninstall = true }
                         .frame(maxWidth: .infinity)

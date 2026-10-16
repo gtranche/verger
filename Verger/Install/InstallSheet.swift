@@ -40,6 +40,33 @@ struct InstallSheet: View {
                 .padding(.horizontal)
                 .padding(.bottom, 10)
 
+            // Plusieurs emplacements (un disque externe) : ou installer.
+            let usable = library.locations.filter(\.acceptsGames)
+            if library.locationsSupported == true, usable.count > 1 || library.locations.contains(where: { $0.isDefault && !$0.online }) {
+                HStack {
+                    Picker("Installer dans", selection: Binding(
+                        get: { library.effectiveInstallLocation?.id ?? "principal" },
+                        set: { library.installLocation = $0 }
+                    )) {
+                        ForEach(usable) { location in
+                            Text(verbatim: MoveMenu.label(location)).tag(location.id)
+                        }
+                    }
+                    .fixedSize()
+                    Spacer()
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 10)
+                if let unplugged = library.locations.first(where: { $0.isDefault && !$0.online }) {
+                    Text(verbatim: L10n.format("« %@ », l'emplacement par défaut, n'est pas branché : les jeux iront dans celui choisi ci-dessus.", unplugged.name))
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                }
+            }
+
             Divider()
             // La liste peut venir du cache d'une connexion precedente : sans
             // session, elle s'affiche mais rien ne s'installerait.
@@ -77,6 +104,7 @@ struct InstallSheet: View {
         }
         .task {
             if library.ownedState == .idle { await library.loadOwned() }
+            await library.loadLocations()
             await library.checkSession()
         }
     }

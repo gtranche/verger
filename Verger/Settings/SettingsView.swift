@@ -11,6 +11,7 @@ struct SettingsView: View {
         TabView(selection: $tab) {
             CidreSettings().tabItem { Label("Cidre", systemImage: "shippingbox") }.tag("cidre")
             SteamSettings().tabItem { Label("Steam", systemImage: "person.crop.circle") }.tag("steam")
+            StorageSettings().tabItem { Label("Stockage", systemImage: "externaldrive") }.tag("stockage")
             OptionsSettings().tabItem { Label("Options", systemImage: "slider.horizontal.3") }.tag("options")
             VergerSettings().tabItem { Label("Verger", systemImage: "leaf") }.tag("verger")
         }

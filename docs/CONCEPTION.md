@@ -34,7 +34,10 @@ Verger ne réimplémente rien : il appelle la CLI `cidre` et lit/écrit des fich
 | Compte Steam et état de la session | `cidre session --json` |
 | Se déconnecter de Steam | `cidre logout` |
 | Les jeux Steam du compte, installés ou non | `cidre library --json [--refresh]` |
-| Télécharger ou mettre à jour un jeu Windows hors client | `cidre dl <appid> [windows\|macos]` |
+| Télécharger ou mettre à jour un jeu Windows hors client | `cidre dl <appid> [windows\|macos] [--vers <emplacement>]` |
+| Où vivent les jeux Cidre (ce Mac, disques externes), place libre, jeux d'un disque débranché | `cidre emplacements --json` |
+| Ajouter un disque ou un dossier, l'oublier, choisir celui des nouveaux jeux | `cidre emplacements ajouter <dossier> --json`, `retirer <id>`, `defaut <id>` |
+| Déplacer un jeu Cidre vers un autre emplacement (avancement, reprise) | `cidre move <id> <emplacement> --json`, `cidre move <id> --annuler` |
 | Les jeux installés dont une version plus récente est publiée | `cidre updates --json [--refresh]` |
 | Mémoriser la session Steam (au Terminal) | `cidre login` |
 | Ajouter un jeu non-Steam | `cidre add <jeu.exe> [nom] --json` |
@@ -174,6 +177,7 @@ Scripts/test.sh
 - **Sauvegardes** : état de la synchro et gestes dans la fiche du jeu. **Fait.**
 - **Signaler un problème** : Verger prépare un incident GitHub prérempli (`gtranche/cidre` pour un jeu, `gtranche/verger` pour l'application) : versions, Mac, options du jeu, fin de son journal (`cidre log`). Le texte passe par `Anonymizer`, qui retire le nom de session, les identifiants Steam, le nom du Mac, les adresses de courriel. Verger n'envoie rien : il ouvre la page de GitHub, l'utilisateur relit et publie ; le journal plus long est écrit dans un fichier à glisser dans l'incident. Pas de clé GitHub dans l'application, pas de serveur. **Fait.**
 - **Forcer l'arrêt et journal de lancement** : un jeu lancé par Cidre s'arrête depuis sa carte ou sa fiche (`cidre stop`), et « Afficher le journal… » montre la sortie de la commande de lancement puis la fin du journal du jeu (`cidre log`), nettoyées, relues toutes les deux secondes tant que le jeu tourne. « Copier avec le diagnostic » y ajoute les versions, l'état de l'installation et les options du jeu : c'est ce qu'on colle dans un message quand on dépanne une machine à distance. **Fait.**
+- **Emplacements des jeux** (disque externe) : Réglages → Stockage liste les emplacements (`cidre emplacements`), en ajoute un (un disque : un dossier « Jeux Cidre » y est créé), en retire un, choisit celui des nouveaux jeux ; « Installer un jeu Steam » demande où installer quand il y en a plusieurs ; la fiche d'un jeu Cidre le déplace (« Déplacer vers… », `cidre move` : copie vérifiée puis suppression, avancement, arrêt et reprise). Un disque débranché laisse ses jeux dans la grille, grisés (`"en_ligne": false`) : ni désinstallés ni perdus, ils reviennent quand on le rebranche (Verger relit tout au montage et au démontage d'un volume). **Fait.**
 - **Phase 4 — polish** : connexion par QR code, overlay Steam (à l'essai côté Cidre).
 
 ## Structure du dépôt

@@ -31,6 +31,17 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
     public let path: String
     public let sizeBytes: Int64
     public let lastPlayed: Date?
+    /// L'emplacement d'un jeu Cidre (`cidre emplacements`) ; `nil` ailleurs, ou
+    /// Cidre <= 1.5.11.
+    public let location: String?
+    /// `false` : son disque est debranche. Le jeu reste installe (ni perdu, ni
+    /// desinstalle) mais ne se lance pas ; il revient quand on rebranche.
+    public let online: Bool
+    /// Son deplacement vers un autre emplacement, en cours ou inacheve.
+    public let move: MoveStatus?
+
+    /// Installe, branche, et pas en plein deplacement : « Jouer » est possible.
+    public var playable: Bool { installed && online && move?.isRunning != true }
 
     /// Un jeu Windows lance par Steam sans le wrapper Cidre ne demarrera pas.
     public var wrapperMissing: Bool {
@@ -46,6 +57,9 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
         case path = "chemin"
         case sizeBytes = "taille"
         case lastPlayed = "dernier_lancement"
+        case location = "emplacement"
+        case online = "en_ligne"
+        case move = "deplacement"
     }
 
     public init(from decoder: Decoder) throws {
@@ -72,6 +86,9 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
         // 0 = jamais lance (Steam n'ecrit pas de date)
         let epoch = try c.decodeIfPresent(Double.self, forKey: .lastPlayed) ?? 0
         lastPlayed = epoch > 0 ? Date(timeIntervalSince1970: epoch) : nil
+        location = try c.decodeIfPresent(String.self, forKey: .location)
+        online = try c.decodeIfPresent(Bool.self, forKey: .online) ?? true
+        move = try? c.decodeIfPresent(MoveStatus.self, forKey: .move)
     }
 }
 
@@ -550,6 +567,9 @@ public enum PlayEvent: Equatable, Sendable {
     case shaders(ShaderCacheStatus)
     /// Le jeu part : plus rien ne suivra.
     case launching
+    /// Cidre refuse de lancer : `hors_ligne` (disque debranche), `deplacement`
+    /// (jeu en cours de deplacement).
+    case refused(code: String, message: String)
 
     /// L'evenement que porte une ligne ; `nil` pour toute autre ligne (un Cidre
     /// plus ancien ecrit ici la sortie du lanceur).
@@ -560,6 +580,9 @@ public enum PlayEvent: Equatable, Sendable {
         switch kind.name {
         case "lancement": return .launching
         case "maj": return (try? JSONDecoder().decode(UpdateStatus.self, from: data)).map(PlayEvent.update)
+        case "erreur":
+            guard let refusal = try? JSONDecoder().decode(Refusal.self, from: data) else { return nil }
+            return .refused(code: refusal.code, message: refusal.message ?? "")
         case "shaders": return (try? JSONDecoder().decode(ShaderCacheStatus.self, from: data)).map(PlayEvent.shaders)
         default: return nil
         }
@@ -568,6 +591,11 @@ public enum PlayEvent: Equatable, Sendable {
     private struct Kind: Decodable {
         let name: String
         enum CodingKeys: String, CodingKey { case name = "evenement" }
+    }
+
+    private struct Refusal: Decodable {
+        let code: String
+        let message: String?
     }
 }
 
@@ -591,7 +619,7 @@ public enum PlayPlan: Equatable, Sendable {
 }
 
 /// L'avancement d'un `cidre dl`, lu dans la sortie de SteamCMD.
-public struct DownloadProgress: Equatable, Sendable {
+public struct DownloadProgress: Hashable, Sendable {
     /// De 0 a 1.
     public var fraction: Double
     public var doneBytes: Int64

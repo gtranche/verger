@@ -98,6 +98,19 @@ final class LibraryModel {
     private(set) var importNotice: String?
     private var downloadTasks: [Int: Task<Void, Never>] = [:]
 
+    /// Ou vivent les jeux Cidre (`cidre emplacements`) : ce Mac, des disques
+    /// externes. Vide tant qu'on ne l'a pas demande.
+    private(set) var locations: [StorageLocation] = []
+    /// Des emplacements Cidre trouves sur un disque branche, pas encore ajoutes.
+    private(set) var detectedLocations: [DetectedLocation] = []
+    /// Ce Cidre connait-il les emplacements ? `nil` : pas encore demande.
+    private(set) var locationsSupported: Bool?
+    /// Les deplacements que Verger a lances et qui tournent, par id de jeu.
+    private(set) var moves: [String: MoveStatus] = [:]
+    private var moveTasks: [String: Task<Void, Never>] = [:]
+    /// L'emplacement choisi dans « Installer un jeu Steam » ; `nil` : celui par defaut.
+    var installLocation: String?
+
     /// L'etat du runtime Cidre (`cidre status`), et la release plus recente s'il y en a une.
     private(set) var runtimeStatus: RuntimeStatus?
     private(set) var availableUpdate: RuntimeRelease?
@@ -146,6 +159,7 @@ final class LibraryModel {
     func reloadIfStale() async {
         guard Date().timeIntervalSince(lastReload) > 15 else { return }
         await reload()
+        if locationsSupported != false { await loadLocations() }
         // « pas a jour » aussi a pu changer sans Verger (un `cidre dl` au
         // Terminal, un build publie depuis) : on ne garde pas un vieux verdict.
         if Date().timeIntervalSince(lastUpdatesCheck) > Self.updatesMaxAge { await checkUpdates() }
@@ -433,6 +447,12 @@ final class LibraryModel {
     /// `updateNotices` dit pourquoi. `skipUpdate` : jouer tout de suite.
     func play(_ game: Game, skipUpdate: Bool = false, acceptCloudLoss: Bool = false) {
         guard let cli, !running.contains(game.id) else { return }
+        // son disque est debranche, ou il est en plein deplacement : Cidre refuserait
+        if !game.online {
+            lastError = offlineMessage(for: game)
+            return
+        }
+        if moves[game.id] != nil { return }
         // deja en train d'etre telecharge : on ne lance pas un jeu a moitie remplace
         if let appid = game.appid, downloads[appid] != nil { return }
         launched.insert(game.id)
@@ -467,6 +487,9 @@ final class LibraryModel {
                 lastError = CidreError.updateRunning.localizedDescription
             } catch let CidreError.cloudSavesAtRisk(files) {
                 cloudGuard = CloudGuardRequest(game: game, files: files)
+            } catch let CidreError.refused(message) {
+                // disque debranche entre-temps, deplacement en cours : la phrase de Cidre
+                lastError = message
             } catch {
                 lastError = LaunchFailureExplainer.explain(log: log, fallback: error.localizedDescription)
             }
@@ -512,6 +535,9 @@ final class LibraryModel {
         }
         guard let appid = game.appid else { return }
         switch event {
+        case .refused:
+            // (l'erreur arrive a la fin de la commande, avec la phrase de Cidre)
+            break
         case .shaders:
             break
         case .launching:
@@ -546,6 +572,8 @@ final class LibraryModel {
         let startedAt = runningSince
         // un Cidre d'avant `cidre running` : on ne sait que ce qu'on a lance
         if let ids = try? await cli?.running() { reported = Set(ids) }
+        // un deplacement lance ailleurs (au Terminal) : son avancement, et sa fin
+        if games.contains(where: { $0.move?.isRunning == true && moveTasks[$0.id] == nil }) { await reload() }
         let now = Date()
         for id in running where runningSince[id] == nil { runningSince[id] = now }
         runningSince = runningSince.filter { running.contains($0.key) }
@@ -797,9 +825,10 @@ final class LibraryModel {
         guard let cli, !importing.contains(appid) else { return }
         importing.insert(appid)
         let name = owned.first { $0.appid == appid }?.name ?? String(appid)
+        let location = chosenInstallLocation
         Task {
             do {
-                importNotice = try await cli.importGame(appid: appid).saves?.notice(game: name)
+                importNotice = try await cli.importGame(appid: appid, location: location).saves?.notice(game: name)
             } catch {
                 lastError = error.localizedDescription
             }
@@ -809,11 +838,16 @@ final class LibraryModel {
         }
     }
 
+    /// Telecharge un jeu : un nouveau jeu va dans l'emplacement choisi a
+    /// l'installation (ou celui par defaut), un jeu installe est mis a jour la
+    /// ou il est.
     func download(appid: Int) {
         guard cli != nil, downloadTasks[appid] == nil, downloads[appid] == nil else { return }
         downloads[appid] = DownloadProgress()
+        let isNew = !games.contains { $0.appid == appid && $0.source == .cidre }
+        let location = isNew ? chosenInstallLocation : nil
         downloadTasks[appid] = Task {
-            _ = await performDownload(appid: appid)
+            _ = await performDownload(appid: appid, location: location)
             downloadTasks[appid] = nil
         }
         // le dossier du jeu apparait des le debut : on le montre dans la grille
@@ -829,12 +863,12 @@ final class LibraryModel {
 
     /// `cidre dl`, attendu jusqu'au bout : l'avancement va dans `downloads`, et
     /// l'etat des mises a jour est relu a la fin.
-    private func performDownload(appid: Int) async -> DownloadOutcome {
+    private func performDownload(appid: Int, location: String? = nil) async -> DownloadOutcome {
         guard let cli else { return .failed }
         downloads[appid] = downloads[appid] ?? DownloadProgress()
         var outcome = DownloadOutcome.done
         do {
-            try await cli.download(appid: appid) { progress in
+            try await cli.download(appid: appid, location: location) { progress in
                 Task { @MainActor in
                     // un avancement arrive apres la fin ne doit pas la ressusciter
                     if self.downloads[appid] != nil { self.downloads[appid] = progress }
@@ -872,6 +906,184 @@ final class LibraryModel {
     /// bibliotheque. On lui ouvre sa fenetre d'installation.
     func installNative(appid: Int) {
         if let url = URL(string: "steam://install/\(appid)") { NSWorkspace.shared.open(url) }
+    }
+
+    // MARK: Emplacements
+
+    /// Ou va un jeu qu'on installe : l'emplacement choisi s'il accepte encore
+    /// des jeux, sinon celui par defaut, sinon ce Mac (le defaut est debranche).
+    var effectiveInstallLocation: StorageLocation? {
+        let usable = locations.filter(\.acceptsGames)
+        if let id = installLocation, let chosen = usable.first(where: { $0.id == id }) { return chosen }
+        return usable.first(where: \.isDefault) ?? usable.first(where: \.isMain) ?? usable.first
+    }
+
+    /// `--vers` pour `cidre dl` et `cidre import` ; `nil` : celui par defaut de
+    /// Cidre (ou un Cidre sans emplacements).
+    private var chosenInstallLocation: String? {
+        guard locationsSupported == true, let location = effectiveInstallLocation else { return nil }
+        return location.isDefault ? nil : location.id
+    }
+
+    func location(id: String?) -> StorageLocation? {
+        guard let id else { return nil }
+        return locations.first { $0.id == id }
+    }
+
+    /// Le nom de l'emplacement d'un jeu, pour le joueur (le volume d'un disque).
+    func locationName(of game: Game) -> String? {
+        location(id: game.location)?.name ?? game.location.flatMap { $0 == "principal" ? L10n.string("Ce Mac") : nil }
+    }
+
+    func offlineMessage(for game: Game) -> String {
+        if let name = locationName(of: game) {
+            return L10n.format("%@ est sur « %@ », qui n'est pas branché. Branche ce disque pour jouer : le jeu n'est ni désinstallé ni perdu.", game.name, name)
+        }
+        return L10n.format("%@ est sur un disque qui n'est pas branché. Branche ce disque pour jouer : le jeu n'est ni désinstallé ni perdu.", game.name)
+    }
+
+    /// Relit les emplacements. Silencieux en cas d'echec : on garde ce qu'on savait.
+    func loadLocations() async {
+        guard let cli else { return }
+        do {
+            if let found = try await cli.storageLocations() {
+                locations = found.locations
+                detectedLocations = found.detected
+                locationsSupported = true
+            } else {
+                locations = []
+                detectedLocations = []
+                locationsSupported = false
+            }
+        } catch {
+            // un echec passager : on redemandera
+        }
+    }
+
+    /// Un disque a ete branche, debranche ou renomme : ses jeux passent en
+    /// ligne ou hors ligne.
+    func volumesChanged() async {
+        await reload()
+        if locationsSupported != false { await loadLocations() }
+    }
+
+    /// Ajoute un disque ou un dossier ; rend l'emplacement, ou `nil` (l'erreur
+    /// est dans `lastError` : FAT32, lecture seule, dossier dans un autre...).
+    @discardableResult
+    func addLocation(_ folder: URL) async -> StorageLocation? {
+        guard let cli else { return nil }
+        var added: StorageLocation?
+        do {
+            added = try await cli.addStorageLocation(folder)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        await loadLocations()
+        // ses jeux, s'il en portait deja, entrent dans la bibliotheque
+        await reload()
+        return added
+    }
+
+    func removeLocation(_ location: StorageLocation) async {
+        guard let cli else { return }
+        do {
+            try await cli.removeStorageLocation(id: location.id)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        if installLocation == location.id { installLocation = nil }
+        await loadLocations()
+        await reload()
+    }
+
+    func setDefaultLocation(_ location: StorageLocation) async {
+        guard let cli else { return }
+        do {
+            try await cli.setDefaultStorageLocation(id: location.id)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        await loadLocations()
+    }
+
+    /// Le deplacement d'un jeu, d'ou qu'il ait ete lance : celui que Verger
+    /// suit, sinon ce qu'en dit `cidre list` (en cours ailleurs, ou inacheve).
+    func moveStatus(of game: Game) -> MoveStatus? {
+        moves[game.id] ?? game.move
+    }
+
+    /// Deplace un jeu Cidre vers un autre emplacement. L'avancement est dans
+    /// `moves` ; a la fin (ou en cas d'echec), la bibliotheque est relue.
+    func move(_ game: Game, to location: StorageLocation) {
+        guard let cli, moveTasks[game.id] == nil, !running.contains(game.id) else { return }
+        moves[game.id] = MoveStatus(state: .running, phase: .preparation, from: game.location, to: location.id)
+        moveTasks[game.id] = Task {
+            do {
+                try await cli.move(id: game.id, to: location.id) { event in
+                    Task { @MainActor in
+                        // un evenement arrive apres la fin ne doit rien ressusciter
+                        guard self.moveTasks[game.id] != nil, event.state == .running else { return }
+                        let previous = self.moves[game.id]
+                        self.moves[game.id] = MoveStatus(
+                            state: .running, phase: event.phase ?? previous?.phase,
+                            from: previous?.from, to: previous?.to,
+                            progress: event.progress ?? (event.phase == .copie ? previous?.progress : nil))
+                    }
+                }
+            } catch is CancellationError {
+                // arrete : l'original est intact, la fiche propose de reprendre
+            } catch {
+                lastError = error.localizedDescription
+            }
+            moves[game.id] = nil
+            moveTasks[game.id] = nil
+            await reload()
+            await loadLocations()
+        }
+    }
+
+    /// Arrete un deplacement en cours ; il pourra reprendre ou il en etait.
+    func stopMove(_ game: Game) {
+        if let task = moveTasks[game.id] {
+            task.cancel()
+            return
+        }
+        // lance ailleurs (au Terminal) : Cidre l'arrete
+        guard let cli else { return }
+        Task {
+            do {
+                try await cli.stopMove(id: game.id)
+            } catch {
+                lastError = error.localizedDescription
+            }
+            await reload()
+        }
+    }
+
+    /// Reprend un deplacement inacheve, vers l'emplacement ou il allait.
+    func resumeMove(_ game: Game) {
+        guard let target = location(id: moveStatus(of: game)?.to) else {
+            lastError = L10n.string("L'emplacement où allait ce jeu n'est plus connu : choisis-en un autre avec « Déplacer vers… ».")
+            return
+        }
+        guard target.online else {
+            lastError = L10n.format("« %@ » n'est pas branché : branche-le pour reprendre le déplacement.", target.name)
+            return
+        }
+        move(game, to: target)
+    }
+
+    /// Abandonne un deplacement : la copie entamee est effacee, le jeu reste ou il etait.
+    func abandonMove(_ game: Game) async {
+        moveTasks[game.id]?.cancel()
+        guard let cli else { return }
+        do {
+            try await cli.abandonMove(id: game.id)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        await reload()
+        await loadLocations()
     }
 
     // MARK: Jeux hors Steam

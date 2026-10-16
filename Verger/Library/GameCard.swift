@@ -15,6 +15,11 @@ struct GameCard: View {
     /// « Jouer » met d'abord le jeu a jour.
     var updatesFirst = false
     var cancelDownload: () -> Void = {}
+    /// Son deplacement vers un autre emplacement, s'il tourne.
+    var move: MoveStatus?
+    var stopMove: () -> Void = {}
+    /// Le disque du jeu est debranche : ce qu'en dit l'infobulle (« Disque X débranché »).
+    var offlineHelp: String?
     /// Forcer l'arret du jeu en cours ; `nil` quand ce n'est pas possible (jeu natif).
     var stop: (() -> Void)?
     let play: () -> Void
@@ -24,6 +29,9 @@ struct GameCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Cover(id: game.id, appid: game.appid, name: game.name)
+                // hors ligne : grise, ni perdu ni desinstalle
+                .saturation(game.online ? 1 : 0)
+                .opacity(game.online ? 1 : 0.45)
                 .overlay(alignment: .bottom) { playOverlay }
                 .overlay {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -37,7 +45,15 @@ struct GameCard: View {
                     .lineLimit(1)
                 HStack(spacing: 6) {
                     PlatformBadge(game: game)
-                    if updateAvailable {
+                    if !game.online {
+                        Label("Hors ligne", systemImage: "externaldrive.badge.xmark")
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .foregroundStyle(.secondary)
+                            .background(Color.secondary.opacity(0.15), in: Capsule())
+                            .help(offlineHelp ?? "")
+                    } else if updateAvailable {
                         Text("Mise à jour")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
@@ -65,6 +81,11 @@ struct GameCard: View {
                 .padding(10)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .padding(8)
+        } else if let move, move.isRunning {
+            MoveProgress(status: move, stop: stopMove)
+                .padding(10)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(8)
         } else if isRunning {
             HStack(spacing: 8) {
                 Label("En cours…", systemImage: "hourglass")
@@ -83,7 +104,7 @@ struct GameCard: View {
             .padding(.vertical, 6)
             .background(.regularMaterial, in: Capsule())
             .padding(10)
-        } else if hovering && game.installed {
+        } else if hovering && game.playable {
             Button(action: play) {
                 Label("Jouer", systemImage: "play.fill")
                     .font(.callout.weight(.semibold))

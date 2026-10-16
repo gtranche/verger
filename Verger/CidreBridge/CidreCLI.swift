@@ -14,9 +14,15 @@ public enum CidreError: Error, LocalizedError, Sendable, Equatable {
     /// ce Mac des sauvegardes qui n'y sont plus (`files`), et les retirerait du
     /// nuage a la sortie du jeu. Relancer avec `acceptCloudLoss` passe outre.
     case cloudSavesAtRisk(files: [String])
+    /// Cidre refuse, et dit pourquoi en une phrase pour le joueur : un jeu dont
+    /// le disque est debranche (code 8), un jeu en cours de deplacement, un
+    /// emplacement en lecture seule...
+    case refused(message: String)
 
     public var errorDescription: String? {
         switch self {
+        case let .refused(message):
+            return message
         case .updateRunning:
             return L10n.string("Une mise à jour de ce jeu est déjà en cours : attends sa fin, puis relance-le.")
         case let .cloudSavesAtRisk(files):
@@ -147,6 +153,9 @@ public struct CidreCLI: Sendable {
             try await runLogged(["play", id] + (acceptCloudLoss ? ["--accord-nuage"] : []), log: log)
         } catch let CidreError.commandFailed(_, status, _) where status == 7 {
             throw CidreError.cloudSavesAtRisk(files: Self.cloudGuardFiles(in: log))
+        } catch let CidreError.commandFailed(_, status, _) where status == 8 {
+            // le disque du jeu est debranche : Cidre l'a dit en derniere ligne
+            throw CidreError.refused(message: Self.lastLine(of: log) ?? L10n.string("Le disque de ce jeu n'est pas branché : branche-le, puis relance le jeu."))
         }
     }
 
@@ -168,6 +177,12 @@ public struct CidreCLI: Sendable {
     static func cloudGuardFiles(in log: URL?) -> [String] {
         guard let log, let text = try? String(contentsOf: log, encoding: .utf8) else { return [] }
         return cloudGuardFiles(in: text)
+    }
+
+    /// La derniere ligne non vide d'un journal : la ou Cidre dit pourquoi il refuse.
+    static func lastLine(of log: URL?) -> String? {
+        guard let log, let text = try? String(contentsOf: log, encoding: .utf8) else { return nil }
+        return text.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.last { !$0.isEmpty }
     }
 
     /// `cidre play <id> --json` : avant de lancer un jeu du dossier Cidre, Cidre
@@ -206,8 +221,10 @@ public struct CidreCLI: Sendable {
         process.standardOutput = pipe
         let lines = LineBuffer()
         let sink = logHandle
+        let refusal = TextTail()
         let deliver: @Sendable (String) -> Void = { line in
             if let event = PlayEvent.parse(line: line) {
+                if case let .refused(_, message) = event { refusal.append(message) }
                 onEvent(event)
             } else if let sink, !line.isEmpty {
                 _ = try? sink.seekToEnd()
@@ -230,6 +247,12 @@ public struct CidreCLI: Sendable {
         if let rest = lines.flush() { deliver(rest) }
 
         try Task.checkCancellation()
+        // Cidre a refuse de lancer, et dit pourquoi (disque debranche : code 8 ;
+        // jeu en cours de deplacement : code 4)
+        let refused = refusal.lastLines(1)
+        if !refused.isEmpty, process.terminationStatus == 8 || process.terminationStatus == 4 {
+            throw CidreError.refused(message: refused)
+        }
         // code 4 : une mise a jour de ce jeu tourne deja (autre commande)
         if process.terminationStatus == 4 { throw CidreError.updateRunning }
         // code 7 : des sauvegardes que Steam croit ici manquent (la garde le dit au journal)
@@ -314,15 +337,19 @@ public struct CidreCLI: Sendable {
     /// Whisky ou Heroic (clone APFS, bouteille intacte), et ramene ses
     /// sauvegardes de la bouteille. Un refus (code 1) porte son message sur
     /// l'erreur standard, montre tel quel.
+    /// `location` : l'id de l'emplacement ou le reprendre (`--vers`) ; `nil`,
+    /// celui par defaut.
     @discardableResult
-    public func importGame(appid: Int) async throws -> ImportResult {
-        let result = try await checked(["import", String(appid), "--json"])
+    public func importGame(appid: Int, location: String? = nil) async throws -> ImportResult {
+        let result = try await checked(["import", String(appid), "--json"] + (location.map { ["--vers", $0] } ?? []))
         // le jeu est repris : une sortie illisible ne doit pas en faire un echec
         return (try? JSONDecoder().decode(ImportResult.self, from: result.stdout)) ?? ImportResult()
     }
 
+    /// `location` : l'id de l'emplacement ou installer un nouveau jeu (`--vers`) ;
+    /// `nil`, celui par defaut. Un jeu deja installe est mis a jour la ou il est.
     public func download(
-        appid: Int, platform: String = "windows",
+        appid: Int, platform: String = "windows", location: String? = nil,
         onProgress: @escaping @Sendable (DownloadProgress) -> Void
     ) async throws {
         // SteamCMD ne rend sa sortie ligne a ligne que sur un terminal : on lui
@@ -330,6 +357,7 @@ public struct CidreCLI: Sendable {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/script")
         process.arguments = ["-q", "/dev/null", "/bin/sh", executable.path, "dl", String(appid), platform]
+            + (location.map { ["--vers", $0] } ?? [])
         process.environment = environment
         process.standardInput = FileHandle.nullDevice
         let pipe = Pipe()
@@ -363,10 +391,136 @@ public struct CidreCLI: Sendable {
         // code 3 : Cidre n'a pas de session Steam memorisee
         if tail.sawPasswordPrompt || process.terminationStatus == 3 { throw CidreError.steamSessionMissing }
         try Task.checkCancellation()
+        // (un disque debranche se dit en derniere ligne ; le code, lui, peut
+        // etre celui de SteamCMD, ou 8 veut dire autre chose)
         guard process.terminationStatus == 0 else {
             throw CidreError.commandFailed(
                 command: "dl \(appid)", status: process.terminationStatus, message: tail.lastLines(4))
         }
+    }
+
+    // MARK: Emplacements
+
+    /// `cidre emplacements --json` : ou vivent les jeux Cidre (ce Mac, des
+    /// disques externes), branches ou non, et ceux detectes sur un disque
+    /// branche. `nil` : ce Cidre ne connait pas les emplacements (<= 1.5.11).
+    public func storageLocations() async throws -> StorageLocations? {
+        let result = try await run(["emplacements", "--json"])
+        guard result.status == 0 else {
+            throw CidreError.commandFailed(command: "emplacements --json", status: result.status,
+                                           message: String(decoding: result.stderr, as: UTF8.self))
+        }
+        // un Cidre d'avant les emplacements repond par son mode d'emploi
+        guard result.stdout.first == UInt8(ascii: "{") else { return nil }
+        do {
+            return try JSONDecoder().decode(StorageLocations.self, from: result.stdout)
+        } catch {
+            throw CidreError.invalidOutput(command: "emplacements --json", underlying: "\(error)")
+        }
+    }
+
+    /// `cidre emplacements ajouter <dossier> --json` : un disque (sa racine : un
+    /// dossier « Jeux Cidre » y est cree) ou un dossier. Ses jeux sont reconnus.
+    @discardableResult
+    public func addStorageLocation(_ folder: URL) async throws -> StorageLocation {
+        let result = try await refusing(["emplacements", "ajouter", folder.path, "--json"])
+        do {
+            return try JSONDecoder().decode(StorageLocation.self, from: result.stdout)
+        } catch {
+            throw CidreError.invalidOutput(command: "emplacements ajouter", underlying: "\(error)")
+        }
+    }
+
+    /// `cidre emplacements retirer <id>` : Cidre l'oublie ; ses jeux restent sur le disque.
+    public func removeStorageLocation(id: String) async throws {
+        _ = try await refusing(["emplacements", "retirer", id, "--json"])
+    }
+
+    /// `cidre emplacements defaut <id>` : les nouveaux jeux iront la.
+    public func setDefaultStorageLocation(id: String) async throws {
+        _ = try await refusing(["emplacements", "defaut", id, "--json"])
+    }
+
+    /// `cidre move <id> <emplacement> --json` : deplace un jeu Cidre (copie
+    /// verifiee, puis l'original est efface ; sauvegardes et prefixe ne bougent
+    /// pas), en racontant l'avancement par `onEvent`. Annuler la tache arrete le
+    /// deplacement : l'original reste intact, et un nouveau `move` reprend la
+    /// copie ou elle en etait. Un refus ou un echec (jeu en cours, place, disque
+    /// debranche) devient `CidreError.refused` avec la phrase de Cidre.
+    public func move(
+        id: String, to location: String, verifyContent: Bool = false,
+        onEvent: @escaping @Sendable (MoveStatus) -> Void
+    ) async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [executable.path, "move", id, location, "--json"] + (verifyContent ? ["--verifier-contenu"] : [])
+        process.environment = environment
+        process.standardInput = FileHandle.nullDevice
+        let out = Pipe(), err = Pipe()
+        process.standardOutput = out
+        process.standardError = err
+
+        let lines = LineBuffer()
+        let last = MoveBox()
+        let deliver: @Sendable (String) -> Void = { line in
+            guard let event = MoveStatus.parse(line: line) else { return }
+            last.set(event)
+            onEvent(event)
+        }
+        let reader = PipeReader(out) { data in
+            for line in lines.append(data) { deliver(line) }
+        }
+        let tail = TextTail()
+        let errors = PipeReader(err) { data in tail.append(String(decoding: data, as: UTF8.self)) }
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                process.terminationHandler = { _ in continuation.resume() }
+                do { try process.run() } catch { continuation.resume(throwing: error) }
+            }
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+        reader.finish()
+        errors.finish()
+        if let rest = lines.flush() { deliver(rest) }
+
+        try Task.checkCancellation()
+        guard process.terminationStatus != 0 else { return }
+        if let event = last.get(), let message = event.message, !message.isEmpty,
+           [.failed, .refused, .interrupted].contains(event.state) {
+            throw CidreError.refused(message: message)
+        }
+        let message = tail.lastLines(1)
+        if !message.isEmpty, [1, 4, 5, 8].contains(process.terminationStatus) { throw CidreError.refused(message: message) }
+        throw CidreError.commandFailed(command: "move \(id) \(location)", status: process.terminationStatus, message: tail.lastLines(4))
+    }
+
+    /// `cidre move <id> --arreter` : arrete un deplacement lance ailleurs (au
+    /// Terminal, par un autre Verger) ; la copie entamee reste, pour reprendre.
+    public func stopMove(id: String) async throws {
+        _ = try await refusing(["move", id, "--arreter", "--json"])
+    }
+
+    /// `cidre move <id> --annuler` : abandonne un deplacement (l'arrete s'il
+    /// tourne, efface la copie entamee). Le jeu reste ou il etait.
+    public func abandonMove(id: String) async throws {
+        _ = try await refusing(["move", id, "--annuler", "--json"])
+    }
+
+    /// Comme `checked`, mais un refus de Cidre (code non nul, une phrase sur
+    /// l'erreur standard) devient `CidreError.refused` avec cette phrase.
+    func refusing(_ arguments: [String]) async throws -> RunResult {
+        let result = try await run(arguments)
+        guard result.status == 0 else {
+            let message = String(decoding: result.stderr, as: UTF8.self)
+                .split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.last { !$0.isEmpty }
+            if let message, [1, 2, 4, 8].contains(result.status) { throw CidreError.refused(message: message) }
+            throw CidreError.commandFailed(
+                command: arguments.joined(separator: " "), status: result.status,
+                message: String(decoding: result.stderr, as: UTF8.self))
+        }
+        return result
     }
 
     // MARK: Hors Steam
@@ -494,6 +648,15 @@ private final class DataBox: @unchecked Sendable {
 
     func set(_ value: Data) { lock.lock(); data = value; lock.unlock() }
     func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
+}
+
+/// Le dernier evenement d'un deplacement, partage entre deux files.
+private final class MoveBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var event: MoveStatus?
+
+    func set(_ value: MoveStatus) { lock.lock(); event = value; lock.unlock() }
+    func get() -> MoveStatus? { lock.lock(); defer { lock.unlock() }; return event }
 }
 
 /// Decoupe en lignes une sortie qui arrive par morceaux.

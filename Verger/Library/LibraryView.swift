@@ -117,6 +117,17 @@ struct LibraryView: View {
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                 Task { await library.reloadIfStale() }
             }
+            // Un disque branche, debranche ou renomme : ses jeux passent en
+            // ligne ou hors ligne sans attendre.
+            .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didMountNotification)) { _ in
+                Task { await library.volumesChanged() }
+            }
+            .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didUnmountNotification)) { _ in
+                Task { await library.volumesChanged() }
+            }
+            .onReceive(NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didRenameVolumeNotification)) { _ in
+                Task { await library.volumesChanged() }
+            }
             // Ce qui tourne en ce moment, y compris lance depuis Steam.
             .task {
                 while !Task.isCancelled {
@@ -126,6 +137,8 @@ struct LibraryView: View {
             }
             .task {
                 await library.reload()
+                // les emplacements : le nom du disque d'un jeu hors ligne
+                await library.loadLocations()
                 // Cidre rafraichit en fond ce qu'il sait des builds publies : le
                 // premier « Jouer » n'attendra pas Steam
                 Task { await library.warmUpdates() }
@@ -235,6 +248,9 @@ struct LibraryView: View {
                             },
                             updatesFirst: library.playPlan(for: game) == .updateThenPlay,
                             cancelDownload: { game.appid.map(library.cancelDownload) },
+                            move: library.moveStatus(of: game),
+                            stopMove: { library.stopMove(game) },
+                            offlineHelp: game.online ? nil : library.offlineMessage(for: game),
                             stop: game.launch == .cidre ? { stopping = game } : nil,
                             play: { library.play(game) }
                         )
