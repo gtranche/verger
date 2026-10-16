@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game compatibility — Verger</title>
+<meta name="description" content="How each Windows game runs under Cidre, Verger's engine, on Apple Silicon Macs: gold, silver, bronze or untested, rendering path, measurements and notes.">
+<link rel="canonical" href="https://gtranche.github.io/verger/en/compatibility/">
+<link rel="alternate" hreflang="fr" href="https://gtranche.github.io/verger/compatibilite/">
+<link rel="alternate" hreflang="en" href="https://gtranche.github.io/verger/en/compatibility/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Game compatibility — Verger">
+<meta property="og:description" content="How each Windows game runs under Cidre on Apple Silicon Macs.">
+<meta property="og:url" content="https://gtranche.github.io/verger/en/compatibility/">
+<meta property="og:image" content="https://gtranche.github.io/verger/captures/library-en.png">
+<meta name="theme-color" content="#f5f2e9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141716" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="../../favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<link rel="stylesheet" href="../../site.css">
+<link rel="preload" href="../../compatibilite/jeux.json" as="fetch" crossorigin>
+</head>
+<body>
+<a class="passer" href="#contenu">Skip to content</a>
+
+<header class="cadre bandeau">
+  <a class="marque" href="../" aria-label="Verger, home">
+    Verger
+  </a>
+  <nav class="menu" aria-label="Sections">
+    <a class="ancre" href="../">Home</a>
+    <a href="./" aria-current="page">Compatibility</a>
+    <span class="langues">
+      <a href="../../compatibilite/" lang="fr" hreflang="fr" data-langue="fr" aria-label="Version française">FR</a>
+      <a href="./" lang="en" aria-current="page" data-langue="en">EN</a>
+    </span>
+  </nav>
+</header>
+
+<main id="contenu">
+  <div class="cadre compat" id="compat" data-donnees="../../compatibilite/jeux.json">
+    <h1>Game compatibility</h1>
+    <p class="chapo">How each Windows game runs under Cidre, Verger's engine, as Verger shows it in the game's panel.</p>
+
+    <dl class="provenances">
+      <div>
+        <dt><span class="origine">Validated by Cidre</span> <b data-total="t"></b></dt>
+        <dd>Tried under Cidre on a Mac: the rating, rendering path, frame rates and notes come from that test, sometimes one Mac family at a time.</dd>
+      </div>
+      <div>
+        <dt><span class="origine">Cidre profile</span> <b data-total="d"></b></dt>
+        <dd>The profiles in Cidre's repository, written or reviewed by hand, with the settings Cidre applies at launch. Validated games are among them.</dd>
+      </div>
+      <div>
+        <dt><span class="origine">Imported report</span> <b data-total="c"></b></dt>
+        <dd>The catalogue: games rated on ProtonDB with no macOS version, completed from PCGamingWiki and AppleGamingWiki. Not tried with Cidre yet.</dd>
+      </div>
+    </dl>
+
+    <p class="legende">The ProtonDB tier says how the game runs on Linux with Proton: a hint for Cidre, not a measurement on a Mac. Notes come from Cidre's profiles and are written in French. Data as of <span data-date>—</span>.</p>
+
+    <div class="filtres" role="search">
+      <label class="recherche">
+        <span class="visuel-cache">Search for a game</span>
+        <input type="search" data-recherche placeholder="Search a game or an appid" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="etats" role="group" aria-label="Rating">
+        <button type="button" data-etat="">All</button>
+        <button type="button" data-etat="or"><span class="point etat-or"></span>Gold</button>
+        <button type="button" data-etat="argent"><span class="point etat-argent"></span>Silver</button>
+        <button type="button" data-etat="bronze"><span class="point etat-bronze"></span>Bronze</button>
+        <button type="button" data-etat="ko"><span class="point etat-ko"></span>Broken</button>
+        <button type="button" data-etat="non-teste"><span class="point etat-non-teste"></span>Untested</button>
+      </div>
+      <label class="provenance">
+        <span class="visuel-cache">Source</span>
+        <select data-origine>
+          <option value="">All sources</option>
+          <option value="t">Validated by Cidre</option>
+          <option value="d">Cidre profiles</option>
+          <option value="c">Imported reports</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="compte" data-compte aria-live="polite"></p>
+    <ul class="jeux" data-liste></ul>
+    <button type="button" class="bouton-suite" data-suite hidden></button>
+    <noscript><p>This list needs JavaScript. The profiles can also be read in <a href="https://github.com/gtranche/cidre/tree/main/profils">Cidre's repository</a>.</p></noscript>
+  </div>
+</main>
+
+<footer class="pied">
+  <div class="cadre">
+    <nav aria-label="Links">
+      <a href="../">Verger</a>
+      <a href="https://github.com/gtranche/cidre/tree/main/profils">The profiles in Cidre's repository</a>
+      <a href="https://github.com/gtranche/cidre/blob/main/profils/CONTRIBUER.md#contributing-to-the-game-profiles">Share a result</a>
+    </nav>
+    <p>Tiers and report counts: <a href="https://www.protondb.com/">ProtonDB</a>. CrossOver and Wine verdicts: <a href="https://www.applegamingwiki.com/">AppleGamingWiki</a> (CC BY-NC-SA), without their text. Steam is a trademark of Valve Corporation; Verger is not affiliated with Valve, Apple or these sites.</p>
+  </div>
+</footer>
+
+<script src="../../compatibilite/compatibilite.js"></script>
+<script>
+document.querySelectorAll("[data-langue]").forEach(function (lien) {
+  lien.addEventListener("click", function () {
+    try { localStorage.setItem("verger-langue", lien.dataset.langue); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 /* Site de présentation de Verger, servi tel quel par GitHub Pages (dossier docs/).
    Pas de chaîne de construction : index.html (français), en/index.html (anglais)
-   et cette feuille. Clair et sombre suivent le réglage du système. */
+   et cette feuille. Clair et sombre suivent le réglage du système. La page de
+   compatibilité (compatibilite/, en/compatibility/) lit compatibilite/jeux.json,
+   que Scripts/compatibilite.py génère depuis les fiches de Cidre. */
 
 :root {
   color-scheme: light dark;
@@ -398,3 +400,186 @@ section { padding-block: clamp(3rem, 8vw, 5.5rem); }
   margin-bottom: 1rem;
 }
 .pied p { max-width: 46rem; }
+
+/* --- Compatibilité des jeux (compatibilite/, en/compatibility/) ---------- */
+
+:root {
+  --or: #8a6200;
+  --or-fond: #f6e7b4;
+  --argent: #545d63;
+  --argent-fond: #e2e5e6;
+  --bronze: #8a4b22;
+  --bronze-fond: #f1dccb;
+  --ko: #a32a22;
+  --ko-fond: #f5d6d2;
+  --platine: #12706e;
+  --platine-fond: #d3ecea;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --or: #f0c760;
+    --or-fond: #3a3014;
+    --argent: #c4cbcf;
+    --argent-fond: #2d3336;
+    --bronze: #e3a175;
+    --bronze-fond: #3b2a1e;
+    --ko: #f0918a;
+    --ko-fond: #3e2120;
+    --platine: #7fd3cf;
+    --platine-fond: #173634;
+  }
+}
+
+.visuel-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.menu a[aria-current] { color: var(--encre); }
+
+.compat { padding-block: clamp(1.5rem, 5vw, 3.5rem) clamp(3rem, 8vw, 5rem); }
+.compat h1 {
+  font-size: clamp(2rem, 5.5vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+.compat .chapo {
+  margin-top: 1rem;
+  max-width: var(--colonne);
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  color: var(--encre-douce);
+}
+
+.provenances {
+  display: grid;
+  gap: 0 clamp(1.5rem, 3vw, 2.5rem);
+  margin: 2rem 0 0;
+}
+@media (min-width: 52rem) { .provenances { grid-template-columns: repeat(3, 1fr); } }
+.provenances > div { padding-block: 1rem; border-top: 1px solid var(--trait); }
+.provenances dt { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.provenances dt b { font: 600 1.3rem/1 var(--serif); }
+.provenances dd { margin: 0.5rem 0 0; color: var(--encre-douce); font-size: 0.95rem; }
+.compat > .legende { margin-top: 0.5rem; max-width: 46rem; }
+
+.filtres {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+  margin: 2rem calc(-1 * var(--marge)) 0;
+  padding: 0.75rem var(--marge);
+  background: var(--fond);
+  border-bottom: 1px solid var(--trait);
+}
+@media (min-width: 44rem) {
+  .filtres { position: sticky; top: 0; z-index: 2; }
+}
+.recherche { flex: 1 1 12rem; }
+.recherche input, .provenance select {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;           /* 16px : Safari sur iPhone ne zoome pas */
+  color: var(--encre);
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+}
+.provenance select { width: auto; padding-right: 2rem; }
+.recherche input::placeholder { color: var(--encre-douce); }
+
+.etats { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.etats button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--encre-douce);
+  background: none;
+  border: 1px solid var(--trait);
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+.etats button:hover { color: var(--encre); }
+.etats button[aria-pressed="true"] {
+  color: var(--encre);
+  background: var(--surface);
+  border-color: var(--encre-douce);
+  font-weight: 600;
+}
+.point { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--c, var(--encre-douce)); }
+
+.compte { margin-top: 1.25rem; font-size: 0.9rem; color: var(--encre-douce); }
+
+.jeux { margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.jeu { padding-block: 1.1rem; border-top: 1px solid var(--trait); }
+.jeu .tete { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.jeu h3 { font-size: 1.15rem; }
+.jeu h3 a { color: var(--encre); text-decoration: none; }
+.jeu h3 a:hover { text-decoration: underline; }
+.appid { font: 0.82rem var(--mono); color: var(--encre-douce); }
+.jeux .vide { padding-block: 2rem; color: var(--encre-douce); border-top: 1px solid var(--trait); }
+
+.marques { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.5rem; }
+.pastille, .palier, .origine, .voie {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+}
+.pastille, .palier { color: var(--c, var(--encre-douce)); background: var(--f, var(--surface)); }
+.origine, .voie { font-weight: 500; color: var(--encre-douce); border: 1px solid var(--trait); }
+.origine-t .marques .origine { color: var(--accent); border-color: var(--accent); }
+
+.etat-or, .palier-gold { --c: var(--or); --f: var(--or-fond); }
+.etat-argent, .palier-silver { --c: var(--argent); --f: var(--argent-fond); }
+.etat-bronze, .palier-bronze { --c: var(--bronze); --f: var(--bronze-fond); }
+.etat-ko, .palier-borked { --c: var(--ko); --f: var(--ko-fond); }
+.palier-platinum { --c: var(--platine); --f: var(--platine-fond); }
+.point.etat-or, .point.etat-argent, .point.etat-bronze, .point.etat-ko { background: var(--c); }
+
+.jeu .details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 1rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.9rem;
+}
+.jeu .details dt { color: var(--encre-douce); }
+.jeu .details dd { margin: 0; }
+.jeu .notes { margin-top: 0.6rem; max-width: 52rem; font-size: 0.92rem; color: var(--encre-douce); }
+
+.familles { margin-top: 0.7rem; font-size: 0.92rem; }
+.familles summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.familles ul { margin: 0.4rem 0 0; padding: 0 0 0 1rem; list-style: none; border-left: 2px solid var(--trait); }
+.familles li { padding-block: 0.6rem; }
+.familles li + li { border-top: 1px dashed var(--trait); }
+.familles .marques { margin-top: 0; }
+
+.bouton-suite {
+  display: block;
+  margin: 1.5rem auto 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 0.6rem 1.3rem;
+  cursor: pointer;
+}
+
+@media (max-width: 30rem) {
+  .jeu .tete { flex-direction: column; gap: 0.1rem; }
+  .provenance { flex: 1 1 100%; }
+  .provenance select { width: 100%; }
+}
