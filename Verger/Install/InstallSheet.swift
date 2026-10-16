@@ -178,6 +178,12 @@ private struct OwnedGameRow: View {
                     Text(verbatim: L10n.format("Déjà installé par %@ · %@", Self.toolName(game.origin), L10n.bytes(game.sizeBytes ?? 0)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                } else if game.isMac32Bit {
+                    // une version Mac existe, mais en 32 bits : inutilisable ici
+                    Text(verbatim: Game.mac32BitNotice)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Text(game.hasMac ? "macOS · Windows" : "Windows")
                         .font(.caption)
@@ -207,8 +213,14 @@ private struct OwnedGameRow: View {
                     }
                 }
                 .fixedSize()
-            } else {
+            } else if game.hasWindows {
                 Button("Installer") { library.download(appid: game.appid) }
+                    .help(game.isMac32Bit ? Game.mac32BitNotice : "")
+            } else {
+                // une version macOS 32 bits sans version Windows : rien ne la lance ici
+                Text("Indisponible")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 3)

@@ -529,3 +529,7 @@
 "À compiler pour ce Mac" = "To be compiled for this Mac";
 "À recompiler en partie (Cidre mis à jour)" = "Partly to be recompiled (Cidre updated)";
 "À recompiler" = "To be recompiled";
+"Indisponible" = "Unavailable";
+"Mac 32 bits" = "32-bit Mac";
+"Installer la version Windows" = "Install the Windows version";
+"Version Mac 32 bits, inutilisable sur ce Mac : Cidre installe la version Windows." = "32-bit Mac version, unusable on this Mac: Cidre installs the Windows version.";

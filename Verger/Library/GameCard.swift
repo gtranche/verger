@@ -143,11 +143,13 @@ struct PlatformBadge: View {
     private var label: String {
         // dossier Cidre sans installation complete : un telechargement interrompu
         if !game.installed { return L10n.string(game.source == .cidre ? "Incomplet" : "Absent") }
+        if game.needsWindowsVersion { return L10n.string("Mac 32 bits") }
         return game.launch == .native ? L10n.string("Natif") : "Cidre"
     }
 
     private var tint: Color {
         if !game.installed { return game.source == .cidre ? .orange : .secondary }
+        if game.needsWindowsVersion { return .orange }
         return game.launch == .native ? .blue : .green
     }
 }

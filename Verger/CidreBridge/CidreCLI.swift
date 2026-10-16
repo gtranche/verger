@@ -156,6 +156,9 @@ public struct CidreCLI: Sendable {
         } catch let CidreError.commandFailed(_, status, _) where status == 8 {
             // le disque du jeu est debranche : Cidre l'a dit en derniere ligne
             throw CidreError.refused(message: Self.lastLine(of: log) ?? L10n.string("Le disque de ce jeu n'est pas branché : branche-le, puis relance le jeu."))
+        } catch let CidreError.commandFailed(_, status, _) where status == 9 {
+            // version macOS 32 bits : macOS ne la lance plus, Cidre l'a dit en derniere ligne
+            throw CidreError.refused(message: Self.lastLine(of: log) ?? Game.mac32BitNotice)
         }
     }
 

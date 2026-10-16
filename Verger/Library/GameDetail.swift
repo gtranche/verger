@@ -85,6 +85,18 @@ struct GameDetail: View {
                     .controlSize(.large)
                     .disabled(true)
                     notice(library.offlineMessage(for: game), icon: "externaldrive.badge.xmark")
+                } else if let appid = game.appid, game.needsWindowsVersion {
+                    // Version macOS 32 bits du client Steam : macOS ne la lance
+                    // plus. Cidre installe la version Windows a cote.
+                    Button {
+                        library.download(appid: appid)
+                    } label: {
+                        Label("Installer la version Windows", systemImage: "arrow.down.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    notice(Game.mac32BitNotice, icon: "exclamationmark.triangle")
                 } else if let appid = game.appid, game.source == .cidre, !game.installed {
                     Button {
                         library.download(appid: appid)

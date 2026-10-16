@@ -39,9 +39,23 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
     public let online: Bool
     /// Son deplacement vers un autre emplacement, en cours ou inacheve.
     public let move: MoveStatus?
+    /// La version macOS installee n'existe qu'en 32 bits : macOS ne la lance
+    /// plus (depuis Catalina, et Rosetta 2 ne traduit pas le 32 bits). Cidre
+    /// installe la version Windows (`cidre dl`). `false` aussi pour un Cidre
+    /// d'avant ce champ.
+    public let mac32Bit: Bool
+
+    /// Une version macOS 32 bits du client Steam : elle ne se lance pas, il
+    /// faut la version Windows.
+    public var needsWindowsVersion: Bool { mac32Bit && platform == .macos }
+
+    /// Ce qu'on dit d'un jeu dont la version macOS n'existe qu'en 32 bits.
+    public static var mac32BitNotice: String {
+        L10n.string("Version Mac 32 bits, inutilisable sur ce Mac : Cidre installe la version Windows.")
+    }
 
     /// Installe, branche, et pas en plein deplacement : « Jouer » est possible.
-    public var playable: Bool { installed && online && move?.isRunning != true }
+    public var playable: Bool { installed && online && move?.isRunning != true && !needsWindowsVersion }
 
     /// Un jeu Windows lance par Steam sans le wrapper Cidre ne demarrera pas.
     public var wrapperMissing: Bool {
@@ -60,6 +74,7 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
         case location = "emplacement"
         case online = "en_ligne"
         case move = "deplacement"
+        case mac32Bit = "mac_32bits"
     }
 
     public init(from decoder: Decoder) throws {
@@ -89,6 +104,7 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
         location = try c.decodeIfPresent(String.self, forKey: .location)
         online = try c.decodeIfPresent(Bool.self, forKey: .online) ?? true
         move = try? c.decodeIfPresent(MoveStatus.self, forKey: .move)
+        mac32Bit = (try? c.decodeIfPresent(Bool.self, forKey: .mac32Bit)) == true
     }
 }
 
@@ -293,10 +309,15 @@ public struct OwnedGame: Decodable, Identifiable, Hashable, Sendable {
     public let bottle: String?
     public let path: String?
     public let sizeBytes: Int64?
+    /// Sa version macOS n'existe qu'en 32 bits (`"mac_32bits": true`) : macOS ne
+    /// la lance plus. Pour Verger, un jeu Windows seulement.
+    public let mac32BitOnly: Bool?
 
     public var id: Int { appid }
     public var inBottle: Bool { source == "bouteille" }
-    public var hasMac: Bool { platforms.contains("macos") }
+    public var isMac32Bit: Bool { mac32BitOnly == true && platforms.contains("macos") }
+    /// Une version macOS qui tourne sur ce Mac : pas une version 32 bits.
+    public var hasMac: Bool { platforms.contains("macos") && !isMac32Bit }
     public var hasWindows: Bool { platforms.contains("windows") }
 
     enum CodingKeys: String, CodingKey {
@@ -309,6 +330,7 @@ public struct OwnedGame: Decodable, Identifiable, Hashable, Sendable {
         case bottle = "bouteille"
         case path = "chemin"
         case sizeBytes = "taille"
+        case mac32BitOnly = "mac_32bits"
     }
 }
 
