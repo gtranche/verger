@@ -446,3 +446,18 @@
 "Voir sur ProtonDB" = "View on ProtonDB";
 "Fiche provisoire : Cidre ne connaît pas encore ce jeu, seul le résumé de ProtonDB est repris. La vraie fiche la remplacera dès qu'elle existera." = "Provisional profile: Cidre doesn't know this game yet, only the ProtonDB summary is shown. The real profile will replace it as soon as it exists.";
 "Le palier de ProtonDB : comment le jeu tourne sous Linux avec Proton. Un indice pour Cidre, pas une mesure sur Mac." = "The ProtonDB tier: how the game runs on Linux with Proton. A hint for Cidre, not a measurement on Mac.";
+
+/* Shaders : premier lancement, cache a refaire (cidre play --json, cidre info --json) */
+"Shaders" = "Shaders";
+"Au premier lancement d'un jeu, ses shaders sont compilés pour ce Mac : quelques minutes d'écran noir ou de textures manquantes, une fois. Ils sont à refaire après une mise à jour de macOS." = "The first time a game launches, its shaders are compiled for this Mac: a few minutes of black screen or missing textures, once. They are rebuilt after a macOS update.";
+"Premier lancement : les shaders du jeu sont compilés pour ce Mac. Cela peut prendre quelques minutes, pendant lesquelles le jeu peut afficher un écran noir ou des textures manquantes. Les lancements suivants seront plus rapides." = "First launch: the game's shaders are being compiled for this Mac. This can take a few minutes, during which the game may show a black screen or missing textures. Later launches will be faster.";
+"macOS a été mis à jour depuis la dernière partie : Metal recompile les shaders du jeu. Ce lancement peut être plus long que d'habitude." = "macOS was updated since you last played: Metal is recompiling the game's shaders. This launch may take longer than usual.";
+"Premier lancement sur ce Mac : les shaders du jeu sont compilés pour sa puce. Cela peut prendre quelques minutes, pendant lesquelles le jeu peut afficher un écran noir ou des textures manquantes." = "First launch on this Mac: the game's shaders are being compiled for its chip. This can take a few minutes, during which the game may show a black screen or missing textures.";
+"Cidre a été mis à jour depuis la dernière partie : une partie des shaders du jeu peut être recompilée. Ce lancement peut être plus long que d'habitude." = "Cidre was updated since you last played: some of the game's shaders may be recompiled. This launch may take longer than usual.";
+"Les shaders du jeu sont à recompiler : ce lancement peut être plus long que d'habitude." = "The game's shaders need to be recompiled: this launch may take longer than usual.";
+"Compilés sur ce Mac" = "Compiled on this Mac";
+"À compiler au premier lancement" = "Compiled on first launch";
+"À recompiler (macOS mis à jour)" = "To be recompiled (macOS updated)";
+"À compiler pour ce Mac" = "To be compiled for this Mac";
+"À recompiler en partie (Cidre mis à jour)" = "Partly to be recompiled (Cidre updated)";
+"À recompiler" = "To be recompiled";

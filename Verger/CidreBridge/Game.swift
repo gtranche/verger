@@ -90,6 +90,8 @@ public struct GameInfo: Decodable, Sendable {
     /// Ce que la base de profils dit de la compatibilite du jeu, sur ce Mac et
     /// par famille de Mac. `nil` : pas de fiche, ou une fiche qui n'en dit rien.
     public let compatibility: GameCompatibility?
+    /// Les shaders du jeu sur ce Mac. `nil` : jeu macOS, ou Cidre <= 1.5.11.
+    public let shaders: ShaderCacheStatus?
 
     enum CodingKeys: String, CodingKey {
         case savesSynced = "sauvegardes"
@@ -97,6 +99,7 @@ public struct GameInfo: Decodable, Sendable {
         case overrides = "options_perso"
         case update = "maj"
         case profile = "fiche"
+        case shaders
     }
 
     public init(from decoder: Decoder) throws {
@@ -109,6 +112,8 @@ public struct GameInfo: Decodable, Sendable {
         update = try c.decodeIfPresent(UpdateStatus.self, forKey: .update)
         // une fiche illisible ne doit pas cacher le reste du jeu
         compatibility = (try? c.decodeIfPresent(GameCompatibility.self, forKey: .profile)).flatMap { $0.isEmpty ? nil : $0 }
+        // (un etat illisible ne doit pas cacher le reste du jeu)
+        shaders = (try? c.decodeIfPresent(ShaderCacheStatus.self, forKey: .shaders)) ?? nil
     }
 
     /// Une valeur d'option, dont seul le nom de la cle nous interesse ici.
@@ -452,11 +457,97 @@ public struct UpdateStatus: Decodable, Equatable, Sendable {
     }
 }
 
+/// Les shaders d'un jeu Windows sur ce Mac : `cidre info --json` (`"shaders"`)
+/// et l'evenement `shaders` de `cidre play --json`, ecrit avant le lancement.
+/// Au premier lancement, chaque shader est traduit puis compile par Metal pour
+/// la puce : des minutes d'ecran noir ou de textures manquantes, une fois.
+public struct ShaderCacheStatus: Decodable, Equatable, Sendable {
+    public enum State: String, Sendable {
+        /// Rien de compile pour ce jeu sur ce Mac, dans sa voie de rendu.
+        case firstLaunch = "premier_lancement"
+        /// Compile, mais a refaire (`reason`) : en general plus court.
+        case invalidated = "cache_invalide"
+        case cached = "en_cache"
+        /// Un etat que ce Verger ne connait pas (Cidre plus recent).
+        case unknown = "inconnu"
+    }
+
+    public enum Reason: String, Sendable {
+        /// macOS a change : Metal recompile son binaire.
+        case macOS = "macos"
+        /// Un autre Mac (autre puce).
+        case machine
+        /// Cidre a change la traduction (voies KosmicKrisp : D3D12, DXVK).
+        case cidre
+        case other = "autre"
+    }
+
+    public let state: State
+    public let reason: Reason?
+    /// La voie de rendu du prochain lancement : dxmt, dxvk ou d3d12.
+    public let renderer: String?
+    /// La fin de la derniere partie notee par Cidre.
+    public let lastRun: Date?
+    /// Le message de Cidre, tel qu'il l'ecrit au terminal.
+    public let message: String?
+
+    enum CodingKeys: String, CodingKey {
+        case state = "etat"
+        case reason = "raison"
+        case renderer = "voie"
+        case lastRun = "dernier"
+        case message
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        state = State(rawValue: try c.decode(String.self, forKey: .state)) ?? .unknown
+        reason = try c.decodeIfPresent(String.self, forKey: .reason).map { Reason(rawValue: $0) ?? .other }
+        renderer = try c.decodeIfPresent(String.self, forKey: .renderer)
+        let epoch = try c.decodeIfPresent(Double.self, forKey: .lastRun) ?? 0
+        lastRun = epoch > 0 ? Date(timeIntervalSince1970: epoch) : nil
+        message = try c.decodeIfPresent(String.self, forKey: .message)
+    }
+
+    /// Ce qu'on annonce au joueur quand il lance le jeu ; `nil` : rien a dire.
+    public var announcement: String? {
+        switch (state, reason) {
+        case (.firstLaunch, _):
+            L10n.string("Premier lancement : les shaders du jeu sont compilés pour ce Mac. Cela peut prendre quelques minutes, pendant lesquelles le jeu peut afficher un écran noir ou des textures manquantes. Les lancements suivants seront plus rapides.")
+        case (.invalidated, .macOS):
+            L10n.string("macOS a été mis à jour depuis la dernière partie : Metal recompile les shaders du jeu. Ce lancement peut être plus long que d'habitude.")
+        case (.invalidated, .machine):
+            L10n.string("Premier lancement sur ce Mac : les shaders du jeu sont compilés pour sa puce. Cela peut prendre quelques minutes, pendant lesquelles le jeu peut afficher un écran noir ou des textures manquantes.")
+        case (.invalidated, .cidre):
+            L10n.string("Cidre a été mis à jour depuis la dernière partie : une partie des shaders du jeu peut être recompilée. Ce lancement peut être plus long que d'habitude.")
+        case (.invalidated, _):
+            message ?? L10n.string("Les shaders du jeu sont à recompiler : ce lancement peut être plus long que d'habitude.")
+        case (.cached, _), (.unknown, _):
+            nil
+        }
+    }
+
+    /// L'etat en quelques mots, pour la fiche du jeu.
+    public var summary: String {
+        switch (state, reason) {
+        case (.cached, _): L10n.string("Compilés sur ce Mac")
+        case (.firstLaunch, _): L10n.string("À compiler au premier lancement")
+        case (.invalidated, .macOS): L10n.string("À recompiler (macOS mis à jour)")
+        case (.invalidated, .machine): L10n.string("À compiler pour ce Mac")
+        case (.invalidated, .cidre): L10n.string("À recompiler en partie (Cidre mis à jour)")
+        case (.invalidated, _): L10n.string("À recompiler")
+        case (.unknown, _): L10n.string("Inconnu")
+        }
+    }
+}
+
 /// Ce que `cidre play <id> --json` ecrit sur sa sortie standard avant de lancer
 /// le jeu, un objet JSON par ligne.
 public enum PlayEvent: Equatable, Sendable {
     /// Ou en est la mise a jour d'avant lancement.
     case update(UpdateStatus)
+    /// Les shaders du jeu sont-ils deja compiles sur ce Mac ?
+    case shaders(ShaderCacheStatus)
     /// Le jeu part : plus rien ne suivra.
     case launching
 
@@ -469,6 +560,7 @@ public enum PlayEvent: Equatable, Sendable {
         switch kind.name {
         case "lancement": return .launching
         case "maj": return (try? JSONDecoder().decode(UpdateStatus.self, from: data)).map(PlayEvent.update)
+        case "shaders": return (try? JSONDecoder().decode(ShaderCacheStatus.self, from: data)).map(PlayEvent.shaders)
         default: return nil
         }
     }

@@ -81,6 +81,9 @@ final class LibraryModel {
     /// pas ete faite (hors ligne, session absente, place...), par appid : le
     /// jeu est parti dans sa version installee, la fiche dit pourquoi.
     private(set) var updateNotices: [Int: String] = [:]
+    /// Ce que Cidre a annonce au lancement sur les shaders du jeu (premier
+    /// lancement, cache a refaire), par id de jeu : dit tant que le jeu tourne.
+    private(set) var shaderNotices: [String: String] = [:]
     /// Les jeux que « Jouer » est en train de mettre a jour avant de les lancer.
     private var updatingBeforeLaunch: Set<Int> = []
     private var playTasks: [String: Task<Void, Never>] = [:]
@@ -361,6 +364,8 @@ final class LibraryModel {
     /// Un jeu vient de s'arreter apres une vraie partie : on proposera de
     /// partager le resultat, discretement, et une seule fois par jeu.
     private func noteEndedGames(before: Set<String>, startedAt: [String: Date], now: Date) {
+        // la partie est finie : ce qui devait etre compile l'a ete (ou le sera la prochaine fois)
+        for id in before.subtracting(running) { shaderNotices[id] = nil }
         for id in before.subtracting(running) {
             guard let since = startedAt[id], now.timeIntervalSince(since) >= Self.shareSuggestionMinimumPlay,
                   !shareSuggested.contains(id),
@@ -432,6 +437,7 @@ final class LibraryModel {
         if let appid = game.appid, downloads[appid] != nil { return }
         launched.insert(game.id)
         if let appid = game.appid { updateNotices[appid] = nil }
+        shaderNotices[game.id] = nil
         let log = Self.logsDirectory.appendingPathComponent("play-\(game.id).log")
         playTasks[game.id] = Task {
             await refreshRunning()
@@ -495,11 +501,19 @@ final class LibraryModel {
         return known
     }
 
-    /// Un evenement de `cidre play --json` : ou en est la mise a jour d'avant lancement.
+    /// Un evenement de `cidre play --json` : ou en est la mise a jour d'avant
+    /// lancement, et s'il faudra compiler les shaders du jeu.
     private func handle(_ event: PlayEvent, for game: Game) {
         // (un evenement arrive apres la fin de la commande ne doit rien ressusciter)
-        guard let appid = game.appid, playTasks[game.id] != nil else { return }
+        guard playTasks[game.id] != nil else { return }
+        if case let .shaders(status) = event {
+            shaderNotices[game.id] = status.announcement
+            return
+        }
+        guard let appid = game.appid else { return }
         switch event {
+        case .shaders:
+            break
         case .launching:
             if updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
         case let .update(status):

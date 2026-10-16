@@ -46,6 +46,12 @@ struct GameDetail: View {
                 if let appid = game.appid {
                     LabeledContent("AppID", value: String(appid))
                 }
+                if let shaders = info?.shaders {
+                    LabeledContent("Shaders") {
+                        Text(verbatim: shaders.summary)
+                            .help(L10n.string("Au premier lancement d'un jeu, ses shaders sont compilés pour ce Mac : quelques minutes d'écran noir ou de textures manquantes, une fois. Ils sont à refaire après une mise à jour de macOS."))
+                    }
+                }
             } header: {
                 Text(game.name).font(.title3.weight(.semibold))
             }
@@ -123,6 +129,10 @@ struct GameDetail: View {
                 // la mise a jour d'avant lancement n'a pas pu se faire : pourquoi
                 if let appid = game.appid, let text = library.updateNotices[appid] {
                     notice(text)
+                }
+                // premier lancement, ou cache a refaire : la compilation des shaders
+                if let text = library.shaderNotices[game.id] {
+                    notice(text, icon: "hourglass")
                 }
 
                 // Un jeu lance par Cidre qui ne repond plus, ou dont la fenetre
@@ -249,14 +259,19 @@ struct GameDetail: View {
                 self.error = error.localizedDescription
             }
         }
+        // une partie finie : l'etat des shaders (et la date) a change
+        .onChange(of: library.running.contains(game.id)) { _, isRunning in
+            guard !isRunning else { return }
+            Task { if let fresh = try? await library.info(for: game) { info = fresh } }
+        }
     }
 
-    /// Une remarque sur la mise a jour du jeu, sous le bouton.
-    private func notice(_ text: String) -> some View {
+    /// Une remarque sur la mise a jour du jeu (ou ses shaders), sous le bouton.
+    private func notice(_ text: String, icon: String = "arrow.down.circle") -> some View {
         Label {
             Text(verbatim: text).fixedSize(horizontal: false, vertical: true)
         } icon: {
-            Image(systemName: "arrow.down.circle")
+            Image(systemName: icon)
         }
         .font(.callout)
         .foregroundStyle(.orange)
