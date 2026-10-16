@@ -1,0 +1,39 @@
+# Regenere la liste de compatibilite du site (docs/compatibilite/jeux.json) depuis
+# les fiches de Cidre : celles du depot (profils/) et le catalogue publie sur la
+# release `profils-base` de Cidre (le 3 de chaque mois, et a chaque fiche poussee).
+# Une fois par semaine, et a la demande ; ne commite que si la liste a change.
+name: compatibilite
+on:
+  schedule:
+    - cron: "23 6 * * 1"   # le lundi, 06:23 UTC
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: compatibilite
+  cancel-in-progress: false
+jobs:
+  liste:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fiches de Cidre
+        uses: actions/checkout@v4
+        with:
+          repository: gtranche/cidre
+          path: cidre
+          sparse-checkout: profils
+      - name: Generer
+        run: python3 -I Scripts/compatibilite.py --depot cidre/profils
+      - name: Publier si la liste a change
+        run: |
+          if git diff --quiet -- docs/compatibilite/jeux.json; then
+            echo "liste inchangee"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/compatibilite/jeux.json
+          git commit -m "Compatibilite : liste des jeux regeneree depuis les fiches de Cidre ($(git -C cidre rev-parse --short HEAD))"
+          git push
