@@ -11,6 +11,7 @@ struct LibraryView: View {
     @State private var installingFromSteam = false
     @State private var loggingIn = false
     @State private var reporting: ReportRequest?
+    @State private var diagnosing: Game?
     /// Le jeu dont on partage le resultat, apres une partie.
     @State private var sharing: Game?
     /// Le jeu dont on demande confirmation avant de forcer l'arret.
@@ -79,6 +80,7 @@ struct LibraryView: View {
             }
             .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
             .sheet(item: $sharing) { GameReportSheet(game: $0).environment(library) }
+            .sheet(item: $diagnosing) { DiagnosticSendSheet(game: $0).environment(library) }
             .confirmationDialog(
                 "Forcer l'arrêt de \(stoppingName) ?",
                 isPresented: Binding(get: { stopping != nil }, set: { if !$0 { stopping = nil } }),
@@ -109,6 +111,10 @@ struct LibraryView: View {
                 Button("OK", role: .cancel) {}
                 // le message s'efface a la fermeture de l'alerte : on le garde
                 Button("Signaler…") { reporting = ReportRequest(error: library.lastError) }
+                // apres un plantage : le diagnostic du jeu, et le code a donner
+                if let game = library.lastErrorGame {
+                    Button("Envoyer un diagnostic…") { diagnosing = game }
+                }
             } message: {
                 Text(library.lastError ?? "")
             }
@@ -323,6 +329,6 @@ struct LibraryView: View {
     }
 
     private var errorShown: Binding<Bool> {
-        Binding(get: { library.lastError != nil }, set: { if !$0 { library.lastError = nil } })
+        Binding(get: { library.lastError != nil }, set: { if !$0 { library.lastError = nil; library.lastErrorGame = nil } })
     }
 }

@@ -59,6 +59,9 @@ final class LibraryModel {
     private var discord: DiscordPresence?
     private var discordShown: (id: String, at: Date)?
     var lastError: String?
+    /// Le jeu dont le lancement vient d'echouer, avec `lastError` : l'alerte
+    /// propose alors d'envoyer son diagnostic.
+    var lastErrorGame: Game?
     /// Un lancement que Cidre a arrete pour proteger le nuage Steam (code 7) :
     /// le jeu, et les sauvegardes qui manquent sur ce Mac.
     var cloudGuard: CloudGuardRequest?
@@ -355,6 +358,32 @@ final class LibraryModel {
         return context
     }
 
+    // MARK: Diagnostic a envoyer
+
+    /// `cidre diag <id>` : l'archive de diagnostic du jeu, masquee ; rien ne part.
+    func makeDiagnostic(for game: Game, screenshot: Bool) async throws -> DiagnosticArchive {
+        guard let cli else { throw DiagnosticSendError.failed(L10n.string("Cidre n'est pas installé : il n'y a rien à diagnostiquer.")) }
+        let verger = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+        return try await cli.makeDiagnostic(id: game.id, screenshot: screenshot, vergerVersion: verger)
+    }
+
+    /// `cidre diag envoyer` : seulement apres le « Envoyer » de l'utilisateur.
+    func sendDiagnostic(_ archive: DiagnosticArchive) async throws -> DiagnosticReceipt {
+        guard let cli else { throw DiagnosticSendError.failed(L10n.string("Cidre n'est pas installé : il n'y a rien à diagnostiquer.")) }
+        return try await cli.sendDiagnostic(archive: archive.archiveURL)
+    }
+
+    /// Le formulaire GitHub du repli. Sans relancer `cidre doctor` : l'archive
+    /// porte deja le diagnostic, et son resume part dans l'incident.
+    func diagnosticFallbackIssue(for game: Game, archive: DiagnosticArchive) async -> IssueReport {
+        let system = SystemInfo.current
+        var context = GameReport.Context(machine: system.machineLabel, model: system.model, macOS: system.macOS,
+                                         gpuFamily: MetalFamily.current)
+        context.cidreVersion = runtimeStatus?.version
+        context.options = (try? await cli?.info(id: game.id))?.options
+        return archive.fallbackIssue(context: context)
+    }
+
     /// Le texte complet d'un rapport, ecrit dans un fichier : une adresse web ne
     /// porte que quelques kilo-octets, et l'utilisateur peut glisser ce fichier
     /// dans l'incident.
@@ -494,6 +523,7 @@ final class LibraryModel {
                 lastError = message
             } catch {
                 lastError = LaunchFailureExplainer.explain(log: log, fallback: error.localizedDescription)
+                lastErrorGame = game
             }
             if let appid = game.appid, updatingBeforeLaunch.remove(appid) != nil { downloads[appid] = nil }
             playTasks[game.id] = nil

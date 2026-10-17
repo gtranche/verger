@@ -14,6 +14,7 @@ struct GameDetail: View {
     @State private var searchingCover = false
     @State private var reporting: ReportRequest?
     @State private var sharing = false
+    @State private var sendingDiagnostic = false
     @State private var showingLog = false
     @State private var confirmingStop = false
     private var covers: CoverStore { CoverStore.shared }
@@ -237,6 +238,12 @@ struct GameDetail: View {
                     .frame(maxWidth: .infinity)
 
                 if game.launch == .cidre {
+                    Button("Envoyer un diagnostic…") { sendingDiagnostic = true }
+                        .frame(maxWidth: .infinity)
+                        .help("Envoie à l'équipe de Cidre de quoi comprendre un problème, et reçois un code à lui donner.")
+                }
+
+                if game.launch == .cidre {
                     Button("Partager mon résultat…") { sharing = true }
                         .frame(maxWidth: .infinity)
                         .help("Dis comment le jeu tourne sur ton Mac : ton rapport nourrit la fiche du jeu.")
@@ -275,6 +282,7 @@ struct GameDetail: View {
         .sheet(isPresented: $searchingCover) { CoverPicker(game: game) }
         .sheet(item: $reporting) { ReportSheet(request: $0).environment(library) }
         .sheet(isPresented: $sharing) { GameReportSheet(game: game).environment(library) }
+        .sheet(isPresented: $sendingDiagnostic) { DiagnosticSendSheet(game: game).environment(library) }
         .sheet(isPresented: $showingLog) { LogSheet(game: game).environment(library) }
         .onAppear {
             // `Verger --journal <id>` ouvre le journal du jeu
