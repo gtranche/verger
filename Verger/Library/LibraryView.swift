@@ -7,6 +7,7 @@ struct LibraryView: View {
     @Environment(LibraryModel.self) private var library
     @Environment(AppUpdateModel.self) private var updater
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
     @State private var selection: Game.ID?
     @State private var installingFromSteam = false
     @State private var loggingIn = false
@@ -46,6 +47,16 @@ struct LibraryView: View {
                     } label: {
                         Label("Ajouter un jeu", systemImage: "plus")
                     }
+                    .disabled(library.cli == nil)
+                }
+                ToolbarItem {
+                    Button {
+                        library.storagePageLocation = nil
+                        openWindow(id: "stockage")
+                    } label: {
+                        Label("Stockage", systemImage: "internaldrive")
+                    }
+                    .help("Stockage : la place sur chaque disque, et le déplacement des jeux d'un disque à l'autre")
                     .disabled(library.cli == nil)
                 }
                 ToolbarItem {
@@ -152,7 +163,7 @@ struct LibraryView: View {
                 // demarre avant que Cidre ne soit localise
                 await library.refreshRunning()
                 // `Verger --jeu <id>` ouvre la fiche d'un jeu, `--connexion` la
-                // connexion a Steam, `--reglages` les reglages
+                // connexion a Steam, `--reglages` les reglages, `--stockage` la page Stockage
                 let arguments = CommandLine.arguments
                 if let flag = arguments.firstIndex(of: "--jeu"), arguments.indices.contains(flag + 1) {
                     selection = arguments[flag + 1]
@@ -167,6 +178,7 @@ struct LibraryView: View {
                     reporting = ReportRequest(game: game)
                 }
                 if arguments.contains("--reglages") { openSettings() }
+                if arguments.contains("--stockage") { openWindow(id: "stockage") }
                 // le reste peut attendre : il interroge le reseau
                 await library.checkRuntime()
                 await library.checkUpdates()

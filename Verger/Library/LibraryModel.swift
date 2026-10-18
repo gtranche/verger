@@ -113,6 +113,16 @@ final class LibraryModel {
     private var moveTasks: [String: Task<Void, Never>] = [:]
     /// L'emplacement choisi dans « Installer un jeu Steam » ; `nil` : celui par defaut.
     var installLocation: String?
+    /// La place libre de chaque emplacement branche selon macOS (purgeable
+    /// compris), par id ; a defaut, celle de Cidre.
+    private(set) var availableCapacity: [String: Int64] = [:]
+    /// La taille des jeux que Cidre ne donne pas, mesuree par Verger, par id de jeu.
+    private(set) var measuredSizes: [String: Int64] = [:]
+    private var measuring: Set<String> = []
+    /// Les deplacements demandes depuis la page Stockage, qui attendent leur tour.
+    private(set) var moveQueue = MoveQueue()
+    /// Le disque montre par la page Stockage ; `nil` : ce Mac.
+    var storagePageLocation: String?
 
     /// L'etat du runtime Cidre (`cidre status`), et la release plus recente s'il y en a une.
     private(set) var runtimeStatus: RuntimeStatus?
@@ -989,6 +999,7 @@ final class LibraryModel {
                 locations = found.locations
                 detectedLocations = found.detected
                 locationsSupported = true
+                await refreshAvailableCapacity()
             } else {
                 locations = []
                 detectedLocations = []
@@ -1078,6 +1089,7 @@ final class LibraryModel {
             moveTasks[game.id] = nil
             await reload()
             await loadLocations()
+            startNextQueuedMove()
         }
     }
 
@@ -1123,6 +1135,94 @@ final class LibraryModel {
         }
         await reload()
         await loadLocations()
+    }
+
+    // MARK: Page Stockage
+
+    /// Relit la place libre des emplacements branches, hors du fil principal
+    /// (un disque reseau peut tarder).
+    private func refreshAvailableCapacity() async {
+        let paths = locations.filter(\.online).map { ($0.id, $0.path) }
+        let found = await Task.detached(priority: .utility) {
+            paths.reduce(into: [String: Int64]()) { result, entry in
+                result[entry.0] = GameSizes.importantAvailableCapacity(at: entry.1)
+            }
+        }.value
+        availableCapacity = found
+    }
+
+    /// L'occupation d'un emplacement, pour sa barre ; `nil` debranche.
+    func usage(of location: StorageLocation) -> DiskUsage? {
+        let measured = games(on: location).filter { $0.source == .cidre }.reduce(Int64(0)) { $0 + size(of: $1) }
+        return DiskUsage(location: location, availableBytes: availableCapacity[location.id], gamesBytes: measured)
+    }
+
+    /// Les jeux installes sur un emplacement : ceux de Cidre, et ceux du client
+    /// Steam ou hors Steam qui sont sur le meme disque.
+    func games(on location: StorageLocation) -> [Game] {
+        games.filter { location.holds($0, among: locations) }
+    }
+
+    /// La taille d'un jeu : celle de Cidre, sinon celle mesuree par Verger (0 en attendant).
+    func size(of game: Game) -> Int64 {
+        game.sizeBytes > 0 ? game.sizeBytes : measuredSizes[game.id] ?? 0
+    }
+
+    /// Mesure en arriere-plan la taille des jeux dont Cidre ne la donne pas.
+    func measureMissingSizes(_ candidates: [Game]) {
+        for game in candidates where game.sizeBytes <= 0 && game.online && measuredSizes[game.id] == nil && !measuring.contains(game.id) {
+            if let cached = GameSizes.cached(game.path) {
+                measuredSizes[game.id] = cached
+                continue
+            }
+            measuring.insert(game.id)
+            let path = game.path
+            Task {
+                let bytes = await Task.detached(priority: .background) { GameSizes.measure(path) }.value
+                measuring.remove(game.id)
+                guard let bytes else { return }
+                GameSizes.store(bytes, for: path)
+                measuredSizes[game.id] = bytes
+            }
+        }
+    }
+
+    /// Un jeu que la page Stockage peut deplacer : un jeu Cidre, branche, qui ne
+    /// tourne pas, ne se telecharge pas et n'est pas deja en route.
+    func canMove(_ game: Game) -> Bool {
+        game.source == .cidre && game.installed && game.online && !running.contains(game.id)
+            && moveStatus(of: game)?.isRunning != true && !moveQueue.contains(game.id)
+            && !(game.appid.map { downloads[$0] != nil } ?? false)
+    }
+
+    /// Met des jeux en file pour un emplacement : un seul deplacement tourne a
+    /// la fois, les suivants partent a la fin du precedent.
+    func enqueueMoves(_ selected: [Game], to location: StorageLocation) {
+        for game in selected where canMove(game) && game.location != location.id {
+            moveQueue.enqueue(.init(gameID: game.id, name: game.name, sizeBytes: size(of: game), to: location.id))
+        }
+        startNextQueuedMove()
+    }
+
+    /// Retire un deplacement qui n'a pas encore commence.
+    func cancelQueuedMove(_ gameID: String) {
+        moveQueue.cancel(gameID)
+    }
+
+    func cancelQueuedMoves() {
+        moveQueue.cancelAll()
+    }
+
+    /// Lance le prochain deplacement en attente, si aucun ne tourne.
+    private func startNextQueuedMove() {
+        guard moveTasks.isEmpty else { return }
+        while let entry = moveQueue.next() {
+            guard let game = games.first(where: { $0.id == entry.gameID }),
+                  let target = location(id: entry.to), target.acceptsGames, game.location != target.id,
+                  game.online, !running.contains(game.id) else { continue }
+            move(game, to: target)
+            return
+        }
     }
 
     // MARK: Jeux hors Steam

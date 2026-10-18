@@ -8,6 +8,7 @@ struct StorageSettings: View {
     @Environment(LibraryModel.self) private var library
     @State private var removing: StorageLocation?
     @State private var working = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Form {
@@ -31,8 +32,19 @@ struct StorageSettings: View {
                 } header: {
                     Text("Emplacements des jeux")
                 } footer: {
-                    Text("Les jeux que Cidre installe vont dans l'emplacement par défaut. Un jeu se déplace d'un emplacement à l'autre depuis sa fiche (« Déplacer vers… »). Quand un disque est débranché, ses jeux restent dans la bibliothèque, grisés : ils reviennent dès qu'on le rebranche.")
+                    Text("Les jeux que Cidre installe vont dans l'emplacement par défaut. Un jeu se déplace d'un emplacement à l'autre depuis sa fiche (« Déplacer vers… »), ou plusieurs à la fois depuis la page Stockage. Quand un disque est débranché, ses jeux restent dans la bibliothèque, grisés : ils reviennent dès qu'on le rebranche.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+                Section {
+                    HStack {
+                        Text("Tous les jeux d'un disque avec leur taille, et le déplacement de plusieurs jeux à la fois.")
+                            .font(.callout).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Ouvrir la page Stockage…") {
+                            library.storagePageLocation = nil
+                            openWindow(id: "stockage")
+                        }
+                    }
                 }
                 if !library.detectedLocations.isEmpty {
                     Section("Trouvés sur un disque branché") {
@@ -89,6 +101,7 @@ private struct LocationRow: View {
     let location: StorageLocation
     @Binding var removing: StorageLocation?
     @Environment(LibraryModel.self) private var library
+    @Environment(\.openWindow) private var openWindow
 
     private var icon: String {
         if !location.online { return "externaldrive.badge.xmark" }
@@ -125,6 +138,10 @@ private struct LocationRow: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .lineLimit(1).truncationMode(.middle)
                     .textSelection(.enabled)
+                if let usage = library.usage(of: location) {
+                    DiskUsageBar(usage: usage, height: 8)
+                        .padding(.vertical, 2)
+                }
                 Text(verbatim: details)
                     .font(.caption).foregroundStyle(.secondary)
                 if let remark = location.explanation {
@@ -145,6 +162,11 @@ private struct LocationRow: View {
                     Button("Retirer…") { removing = location }
                         .help("Cidre oublie cet emplacement ; ses jeux restent sur le disque.")
                 }
+                Button("Jeux…") {
+                    library.storagePageLocation = location.id
+                    openWindow(id: "stockage")
+                }
+                .help("Ouvre la page Stockage sur cet emplacement : ses jeux, leur taille, et leur déplacement.")
                 if location.online {
                     Button("Afficher") {
                         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: location.path)
@@ -159,7 +181,8 @@ private struct LocationRow: View {
     private var details: String {
         let games = location.gamesSummary
         guard location.online, let free = location.freeBytes else { return games }
-        var parts = [L10n.format("%@ libres", L10n.bytes(free)), games]
+        // la barre dit deja la place libre
+        var parts = library.usage(of: location) == nil ? [L10n.format("%@ libres", L10n.bytes(free)), games] : [games]
         if let fs = location.fileSystem { parts.append(Self.fileSystemName(fs)) }
         return parts.joined(separator: " · ")
     }

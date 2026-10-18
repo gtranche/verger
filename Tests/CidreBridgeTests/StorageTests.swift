@@ -57,6 +57,103 @@ struct StorageTests {
         #expect(games[4].online && games[4].location == nil && games[4].move == nil && games[4].playable)
     }
 
+    // MARK: Page Stockage
+
+    private func location(_ json: String) throws -> StorageLocation {
+        try decode(StorageLocation.self, json)
+    }
+
+    @Test func diskUsageFromLocation() throws {
+        let main = try location(#"{"id":"principal","nom":"Ce Mac","chemin":"/c","en_ligne":true,"principal":true,"libre":200,"total":1000,"jeux":2,"taille_jeux":300}"#)
+        let usage = try #require(DiskUsage(location: main))
+        #expect(usage.usedBytes == 800 && usage.gamesBytes == 300 && usage.otherBytes == 500 && usage.freeBytes == 200)
+        #expect(abs(usage.gamesFraction + usage.otherFraction + usage.freeFraction - 1) < 1e-9)
+        #expect(!usage.isNearlyFull && !usage.summary.isEmpty)
+        // la place de macOS (purgeable compris) passe avant le df de Cidre ;
+        // les jeux mesures par Verger, s'ils pesent plus que ce que dit Cidre
+        let finder = try #require(DiskUsage(location: main, availableBytes: 350, gamesBytes: 400))
+        #expect(finder.freeBytes == 350 && finder.gamesBytes == 400 && finder.otherBytes == 250)
+        // jamais plus de jeux que d'occupe, ni de libre que de total
+        let odd = DiskUsage(totalBytes: 100, freeBytes: 150, gamesBytes: 80)
+        #expect(odd.freeBytes == 100 && odd.gamesBytes == 0 && odd.usedBytes == 0)
+        #expect(DiskUsage(totalBytes: 1000, freeBytes: 50, gamesBytes: 0).isNearlyFull)
+    }
+
+    @Test func unpluggedDiskHasNoBar() throws {
+        let unplugged = try location(#"{"id":"vieux","nom":"Vieux","chemin":"/Volumes/Vieux/Jeux Cidre","volume":"Vieux","en_ligne":false,"libre":null,"total":null,"jeux":2,"taille_jeux":3000}"#)
+        #expect(DiskUsage(location: unplugged) == nil)
+        #expect(DiskUsage(location: unplugged, availableBytes: 10) == nil)
+        let unknown = try location(#"{"id":"x","nom":"X","chemin":"/x","en_ligne":true,"libre":null,"total":null}"#)
+        #expect(DiskUsage(location: unknown) == nil)
+    }
+
+    @Test func gamesOnEachDisk() throws {
+        let locations = try decode(StorageLocations.self, """
+        {"emplacements":[
+          {"id":"principal","nom":"Ce Mac","chemin":"/c","en_ligne":true,"principal":true},
+          {"id":"ssd-1","nom":"SSD","chemin":"/Volumes/SSD/Jeux Cidre","volume":"SSD","en_ligne":true},
+          {"id":"vieux","nom":"Vieux","chemin":"/Volumes/Vieux/Jeux Cidre","volume":"Vieux","en_ligne":false}
+        ]}
+        """).locations
+        let games = try decode([Game].self, """
+        [{"id":"1","appid":1,"nom":"Cidre interne","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/c/1","taille":10,"emplacement":"principal"},
+         {"id":"2","appid":2,"nom":"Cidre SSD","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/Volumes/SSD/Jeux Cidre/2","taille":20,"emplacement":"ssd-1"},
+         {"id":"3","appid":3,"nom":"Steam SSD","plateforme":"macos","lancement":"natif","source":"steam","installe":true,"chemin":"/Volumes/SSD/SteamLibrary/steamapps/common/3","taille":30},
+         {"id":"4","appid":4,"nom":"Steam interne","plateforme":"macos","lancement":"natif","source":"steam","installe":true,"chemin":"/Users/x/Library/Application Support/Steam/steamapps/common/4","taille":40},
+         {"id":"local-5","nom":"Hors Steam","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"chemin":"/Volumes/Autre/Jeu/jeu.exe","taille":0},
+         {"id":"6","appid":6,"nom":"Debranche","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/Volumes/Vieux/Jeux Cidre/6","taille":60,"emplacement":"vieux","en_ligne":false},
+         {"id":"7","appid":7,"nom":"Pas installe","plateforme":"absent","lancement":"cidre","source":"cidre","installe":false,"chemin":"/c/7","taille":0,"emplacement":"principal"}]
+        """)
+        func ids(_ index: Int) -> [String] { games.filter { locations[index].holds($0, among: locations) }.map(\.id) }
+        #expect(ids(0) == ["1", "4"])
+        #expect(ids(1) == ["2", "3"])
+        // un disque debranche garde ses jeux, grises
+        #expect(ids(2) == ["6"])
+        // un jeu sur un volume sans emplacement Cidre n'est sur aucun
+        #expect(!locations.contains { $0.holds(games[4], among: locations) })
+        #expect(StorageLocation.volumeName(of: "/Volumes/SSD/a") == "SSD" && StorageLocation.volumeName(of: "/Users/x") == nil)
+    }
+
+    @Test func moveQueueOrderAndCancel() {
+        var queue = MoveQueue()
+        queue.enqueue(.init(gameID: "1", name: "Un", sizeBytes: 10, to: "ssd"))
+        queue.enqueue(.init(gameID: "2", name: "Deux", sizeBytes: 20, to: "ssd"))
+        queue.enqueue(.init(gameID: "3", name: "Trois", sizeBytes: 30, to: "principal"))
+        // redemande : il garde sa place, change de destination
+        queue.enqueue(.init(gameID: "1", name: "Un", sizeBytes: 10, to: "principal"))
+        #expect(queue.pending.map(\.gameID) == ["1", "2", "3"] && queue.pending[0].to == "principal")
+        #expect(queue.pendingBytes(to: "principal") == 40 && queue.pendingBytes(to: "ssd") == 20)
+        queue.cancel("2")
+        #expect(!queue.contains("2"))
+        #expect(queue.next()?.gameID == "1")
+        #expect(queue.pending.map(\.gameID) == ["3"])
+        queue.cancelAll()
+        #expect(queue.isEmpty && queue.next() == nil)
+    }
+
+    @Test func measuredSizeAndCache() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("verger-taille-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("sous"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Data(count: 100_000).write(to: folder.appendingPathComponent("a.bin"))
+        try Data(count: 50_000).write(to: folder.appendingPathComponent("sous/b.bin"))
+        let size = try #require(GameSizes.measure(folder.path))
+        #expect(size >= 150_000)
+        #expect(GameSizes.measure(folder.appendingPathComponent("absent").path) == nil)
+
+        // un seul domaine, vide apres chaque passe
+        let suite = "io.github.gtranche.verger.tests"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        #expect(GameSizes.cached("/j", defaults: defaults, now: now) == nil)
+        GameSizes.store(1234, for: "/j", defaults: defaults, now: now)
+        #expect(GameSizes.cached("/j", defaults: defaults, now: now.addingTimeInterval(3600)) == 1234)
+        // au bout d'une semaine, on remesure
+        #expect(GameSizes.cached("/j", defaults: defaults, now: now.addingTimeInterval(8 * 24 * 3600)) == nil)
+        #expect((GameSizes.importantAvailableCapacity(at: NSHomeDirectory()) ?? 0) > 0)
+    }
+
     @Test func moveEvents() throws {
         let lines = [
             #"{"evenement":"deplacement","etat":"en_cours","phase":"preparation"}"#,

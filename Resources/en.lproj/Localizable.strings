@@ -452,7 +452,7 @@
 "Ce Cidre ne sait ranger les jeux que sur ce Mac. Mets-le à jour pour utiliser un disque externe." = "This Cidre can only keep games on this Mac. Update it to use an external drive.";
 "Ajouter un disque ou un dossier…" = "Add a Drive or Folder…";
 "Emplacements des jeux" = "Game Locations";
-"Les jeux que Cidre installe vont dans l'emplacement par défaut. Un jeu se déplace d'un emplacement à l'autre depuis sa fiche (« Déplacer vers… »). Quand un disque est débranché, ses jeux restent dans la bibliothèque, grisés : ils reviennent dès qu'on le rebranche." = "Games installed by Cidre go to the default location. A game moves from one location to another from its page (“Move To…”). When a drive is unplugged, its games stay in the library, grayed out: they come back as soon as it is plugged in again.";
+"Les jeux que Cidre installe vont dans l'emplacement par défaut. Un jeu se déplace d'un emplacement à l'autre depuis sa fiche (« Déplacer vers… »), ou plusieurs à la fois depuis la page Stockage. Quand un disque est débranché, ses jeux restent dans la bibliothèque, grisés : ils reviennent dès qu'on le rebranche." = "Games installed by Cidre go to the default location. A game moves from one location to another from its page (“Move To…”), or several at once from the Storage page. When a drive is unplugged, its games stay in the library, grayed out: they come back as soon as it is plugged in again.";
 "Trouvés sur un disque branché" = "Found on a Connected Drive";
 "%@ · %@ jeux" = "%@ · %@ games";
 "Ajouter" = "Add";
@@ -578,3 +578,38 @@
 "Le service de diagnostic ne répond pas (pas de réseau ?)." = "The diagnostics service is not responding (no network?).";
 "Le service de diagnostic a refusé l'envoi : %@" = "The diagnostics service refused the upload: %@";
 "L'envoi a échoué : %@" = "Sending failed: %@";
+
+/* Page Stockage : barres d'espace disque, jeux par disque, file de deplacements */
+"Ouvrir la page Stockage…" = "Open Storage Page…";
+"Jeux…" = "Games…";
+"Ouvre la page Stockage sur cet emplacement : ses jeux, leur taille, et leur déplacement." = "Opens the Storage page on this location: its games, their size, and moving them.";
+"Stockage : la place sur chaque disque, et le déplacement des jeux d'un disque à l'autre" = "Storage: space on each drive, and moving games from one drive to another";
+"Jeux Cidre : %@" = "Cidre games: %@";
+"Autres : %@" = "Other: %@";
+"Libre : %@" = "Free: %@";
+"sur %@" = "of %@";
+"%@ utilisés sur %@ · %@ libres" = "%@ used of %@ · %@ free";
+"Lecture des emplacements…" = "Reading locations…";
+"mesure…" = "measuring…";
+"Aucun jeu sur ce disque" = "No games on this drive";
+"Disque débranché" = "Drive unplugged";
+"%@ libres sur %@" = "%@ free of %@";
+"Place inconnue" = "Space unknown";
+"En attente → %@" = "Waiting → %@";
+"En cours d'exécution" = "Running";
+"Déplacement inachevé (voir sa fiche)" = "Unfinished move (see its page)";
+"Installé par Steam : à déplacer depuis Steam" = "Installed by Steam: move it from Steam";
+"Hors Steam : ses fichiers restent où ils sont" = "Non-Steam: its files stay where they are";
+"Déplacements" = "Moves";
+"Annuler ceux en attente" = "Cancel Waiting Moves";
+"En attente · %@" = "Waiting · %@";
+"Retirer ce jeu de la file : il ne sera pas déplacé." = "Remove this game from the queue: it will not be moved.";
+"%@ ne peuvent pas être déplacés d'ici (Steam, hors Steam, en cours…)." = "%@ cannot be moved from here (Steam, non-Steam, running…).";
+"Aucun autre disque branché : ajoutes-en un dans Réglages › Stockage." = "No other drive plugged in: add one in Settings › Storage.";
+"Déplacer vers « %@ »" = "Move to “%@”";
+"Copie les jeux un par un sur ce disque, vérifie chaque copie, puis les efface d'ici. Sauvegardes et réglages ne bougent pas." = "Copies the games one by one to this drive, verifies each copy, then deletes them from here. Saves and settings stay put.";
+"Sélectionne des jeux (⌘ ou ⇧ pour en prendre plusieurs)." = "Select games (⌘ or ⇧ to pick several).";
+"1 jeu sélectionné · %@" = "1 game selected · %@";
+"%@ jeux sélectionnés · %@" = "%@ games selected · %@";
+"Pas assez de place sur %@ pour toute la sélection." = "Not enough space on %@ for the whole selection.";
+"Tous les jeux d'un disque avec leur taille, et le déplacement de plusieurs jeux à la fois." = "All the games on a drive with their size, and moving several games at once.";

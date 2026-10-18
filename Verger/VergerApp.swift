@@ -30,6 +30,12 @@ struct VergerApp: App {
         }
         .defaultSize(width: 1000, height: 680)
 
+        // La page Stockage : les disques de jeux et le deplacement des jeux.
+        Window("Stockage", id: "stockage") {
+            localized(StorageView())
+        }
+        .defaultSize(width: 900, height: 640)
+
         Settings {
             localized(SettingsView())
         }
