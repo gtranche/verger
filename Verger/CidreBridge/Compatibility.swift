@@ -21,6 +21,9 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
     /// l'installation d'un jeu que la base ne connaissait pas, avec le seul
     /// resume ProtonDB.
     public let provisional: Bool
+    /// Ce que disent les autres bases publiques (PCGamingWiki, AppleGamingWiki,
+    /// CrossOver) et le `[jeu]` importe, pour information. `nil` : rien.
+    public let external: ExternalSources?
 
     /// Le resume public de ProtonDB, tel que la fiche le porte (`[compat.protondb]`).
     public struct ProtonDBSummary: Decodable, Equatable, Sendable {
@@ -162,6 +165,8 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case here = "compat", reference = "compat_reference", families = "compat_machines"
         case protonDB = "protondb", origin = "origine"
+        case game = "jeu", gameSources = "jeu_sources", appleGamingWiki = "applegamingwiki"
+        case crossOver = "crossover", pcGamingWiki = "pcgamingwiki"
     }
 
     public init(from decoder: Decoder) throws {
@@ -172,14 +177,21 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
         families = (try? c.decodeIfPresent([Status].self, forKey: .families)) ?? []
         protonDB = try? c.decodeIfPresent(ProtonDBSummary.self, forKey: .protonDB)
         provisional = (try? c.decodeIfPresent(String.self, forKey: .origin)) == "provisoire"
+        typealias Object = [String: ExternalSources.Scalar]
+        let object = { (k: CodingKeys) in (try? c.decodeIfPresent(Object.self, forKey: k)) ?? nil }
+        let external = ExternalSources(game: object(.game) ?? [:], sources: object(.gameSources) ?? [:],
+                                       agw: object(.appleGamingWiki), crossOver: object(.crossOver), pcgw: object(.pcGamingWiki))
+        self.external = external.isEmpty ? nil : external
     }
 
-    public init(here: Status?, reference: Status?, families: [Status], protonDB: ProtonDBSummary? = nil, provisional: Bool = false) {
+    public init(here: Status?, reference: Status?, families: [Status], protonDB: ProtonDBSummary? = nil, provisional: Bool = false,
+                external: ExternalSources? = nil) {
         self.here = here
         self.reference = reference
         self.families = families
         self.protonDB = protonDB
         self.provisional = provisional
+        self.external = external
     }
 
     private static func status(_ s: Status?) -> Status? {
@@ -199,6 +211,7 @@ public struct GameCompatibility: Decodable, Equatable, Sendable {
         families.filter { $0.applies == false }
     }
 
-    /// La fiche ne dit rien de plus que « non teste » (ni resume ProtonDB).
-    public var isEmpty: Bool { here == nil && families.isEmpty && protonDB == nil }
+    /// La fiche ne dit rien de plus que « non teste » (ni resume ProtonDB, ni
+    /// autre source).
+    public var isEmpty: Bool { here == nil && families.isEmpty && protonDB == nil && external == nil }
 }

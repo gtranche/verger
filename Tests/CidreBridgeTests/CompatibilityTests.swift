@@ -99,3 +99,57 @@ private let infoProvisoireJSON = """
     #expect(c2.protonDB == nil && c2.here?.verdict == .silver && !c2.provisional)
     #expect(GameCompatibility.ProtonDBTier.platinum.title == "Platine")
 }
+
+// `cidre info 1245620 --json` (ELDEN RING), fiche du catalogue : [jeu] importe de
+// PCGamingWiki et blocs PCGamingWiki, AppleGamingWiki et CrossOver.
+private let infoImporteJSON = """
+    {"appid":1245620,"nom":"ELDEN RING","plateforme":"windows","lancement":"cidre","source":"steam","installe":true,"chemin":"/jeux/er",
+     "fiche":{"jeu":{"appid":1245620,"nom":"ELDEN RING","plateformes_steam":"windows","api":"d3d12","api_disponibles":"d3d12","bits":64,"anticheat":"eac","drm":"steam"},
+      "cidre":{"exe_sans_anticheat":"eldenring.exe"},"compat":{"etat":"non-teste","date":"2026-10-11"},
+      "protondb":{"palier":"gold","rapports":2105,"source":"protondb","date":"2026-10-01","url":"https://www.protondb.com/app/1245620"},
+      "pcgamingwiki":{"fichiers_reglages":"AppData/Roaming/EldenRing/GraphicsConfig.xml","sauvegardes":"AppData/Roaming/EldenRing/<uid>/ ; jeu:save","correspondance":"appid","source":"pcgamingwiki","date":"2026-10-11","url":"https://www.pcgamingwiki.com/wiki/Elden_Ring"},
+      "applegamingwiki":{"crossover":"jouable","wine":"parfait","parallels":"ko","rosetta":"inconnu","methodes":"crossover","dernier_temoignage":"2025-05-12","source":"applegamingwiki","date":"2026-10-11","url":"https://www.applegamingwiki.com/wiki/Elden_Ring"},
+      "crossover":{"recette":"com.codeweavers.c4.18041","bouteille":"win10_64","graphismes":"d3dmetal","crossover_version":"23.5","recette_date":"2026-06-30","source":"crossover","date":"2026-10-13","url":"https://www.codeweavers.com/compatibility/browse/name/?app_id=18041"},
+      "jeu_sources":{"api":"pcgamingwiki 2026-10-11","api_disponibles":"pcgamingwiki 2026-10-11","bits":"pcgamingwiki 2026-10-11","anticheat":"pcgamingwiki 2026-10-11","drm":"pcgamingwiki 2026-10-11"},
+      "reglages_jeu":[],"variantes":[],"compat_reference":{"etat":"non-teste"},"compat_machines":[],"origine":"cache","rapports":0}}
+    """
+
+@Test func lesAutresSourcesDeLaFiche() throws {
+    let compat = try #require(try JSONDecoder().decode(GameInfo.self, from: Data(infoImporteJSON.utf8)).compatibility)
+    let e = try #require(compat.external)
+    #expect(e.antiCheat == .init(id: "eac", name: "Easy Anti-Cheat", source: "pcgamingwiki 2026-10-11"))
+    #expect(e.antiCheat?.blocksOnline == true)
+    #expect(e.apis == .init(value: "Direct3D 12", source: "pcgamingwiki 2026-10-11"))
+    #expect(e.bits?.value == "64 bits" && e.engine == nil && e.drm?.value == "steam")
+    // un verdict inconnu (« inconnu ») est laisse de cote, l'ordre est celui des voies
+    let agw = try #require(e.appleGamingWiki)
+    #expect(agw.verdicts.map(\.route) == [.crossover, .wine, .parallels])
+    #expect(agw.verdicts.map(\.verdict) == [.playable, .perfect, .broken])
+    #expect(agw.lastReport == "2025-05-12" && agw.url?.host == "www.applegamingwiki.com")
+    #expect(e.crossOver?.graphics == "d3dmetal" && e.crossOver?.bottle == "win10_64" && e.crossOver?.dllOverrides == nil)
+    #expect(e.pcGamingWiki?.settingsFiles == ["AppData/Roaming/EldenRing/GraphicsConfig.xml"])
+    #expect(e.pcGamingWiki?.saves == ["AppData/Roaming/EldenRing/<uid>/", "jeu:save"])
+}
+
+@Test func autresSourcesAbsentesOuIllisibles() throws {
+    // Cidre d'avant (pas de blocs importes) : seul le [jeu] compte
+    let ancien = infoImporteJSON
+        .replacingOccurrences(of: #""pcgamingwiki":{"#, with: #""x1":{"#)
+        .replacingOccurrences(of: #""applegamingwiki":{"#, with: #""x2":{"#)
+        .replacingOccurrences(of: #""crossover":{"recette""#, with: #""x3":{"recette""#)
+        .replacingOccurrences(of: #""jeu_sources":{"#, with: #""x4":{"#)
+    let e = try #require(try JSONDecoder().decode(GameInfo.self, from: Data(ancien.utf8)).compatibility?.external)
+    #expect(e.appleGamingWiki == nil && e.crossOver == nil && e.pcGamingWiki == nil)
+    #expect(e.antiCheat?.source == nil && e.apis?.value == "Direct3D 12")
+    // null partout, anti-triche « none », moteur « autre » sans nom : rien a montrer
+    let rien = #"{"appid":1,"nom":"X","plateforme":"windows","lancement":"cidre","source":"steam","installe":true,"chemin":"/x","fiche":{"jeu":{"appid":1,"anticheat":"none","moteur":"autre"},"compat":{},"protondb":null,"pcgamingwiki":null,"applegamingwiki":null,"crossover":null,"jeu_sources":{}}}"#
+    #expect(try JSONDecoder().decode(GameInfo.self, from: Data(rien.utf8)).compatibility == nil)
+    // un moteur nomme par PCGamingWiki passe avant le vocabulaire de la fiche
+    let moteur = rien.replacingOccurrences(of: #""moteur":"autre""#, with: #""moteur":"autre","moteur_nom":"id Tech 4""#)
+        .replacingOccurrences(of: #""jeu_sources":{}"#, with: #""jeu_sources":{"moteur_nom":"pcgamingwiki 2026-10-15"}"#)
+    let m = try JSONDecoder().decode(GameInfo.self, from: Data(moteur.utf8)).compatibility?.external?.engine
+    #expect(m == .init(value: "id Tech 4", source: "pcgamingwiki 2026-10-15"))
+    // une valeur d'un autre type (nombre au lieu de chaine) ne fait pas tomber la fiche
+    let nombre = rien.replacingOccurrences(of: #""anticheat":"none""#, with: #""anticheat":3"#)
+    #expect(try JSONDecoder().decode(GameInfo.self, from: Data(nombre.utf8)).compatibility?.external?.antiCheat?.name == "3")
+}
