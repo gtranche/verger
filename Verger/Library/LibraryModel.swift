@@ -774,6 +774,23 @@ final class LibraryModel {
     }
 
     /// Un jeu du client Steam se met a jour dans Steam : on ouvre ses telechargements.
+    /// Ouvre le client Battle.net : c'est lui qui installe, met a jour et
+    /// desinstalle ses jeux. La bibliotheque est relue un peu plus tard.
+    func openBattleNet() {
+        guard let cli else { return }
+        Task {
+            do {
+                try await cli.openBattleNet()
+            } catch {
+                lastError = error.localizedDescription
+            }
+            for delay in [30, 90] {
+                try? await Task.sleep(for: .seconds(delay))
+                await reload()
+            }
+        }
+    }
+
     func openSteamDownloads() {
         if let url = URL(string: "steam://open/downloads") { NSWorkspace.shared.open(url) }
     }

@@ -12,12 +12,13 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
     }
 
     /// Ou vit le jeu : dans le client Steam, dans le dossier Cidre (`cidre dl`),
-    /// ou hors Steam (`cidre add`).
+    /// hors Steam (`cidre add`), ou installe par le client Battle.net (id
+    /// `bnet-<code>`, sans appid : `cidre play` le lance par le client).
     public enum Source: String, Sendable {
-        case steam, cidre, local
+        case steam, cidre, local, battlenet
     }
 
-    /// La cle du jeu pour la CLI : l'appid Steam, ou `local-...` hors Steam.
+    /// La cle du jeu pour la CLI : l'appid Steam, `local-...` hors Steam, `bnet-...` Battle.net.
     public let id: String
     /// `nil` pour un jeu hors Steam.
     public let appid: Int?
@@ -93,7 +94,8 @@ public struct Game: Decodable, Identifiable, Hashable, Sendable {
         // tomber toute la bibliotheque : on retombe sur une valeur neutre.
         platform = Platform(rawValue: try c.decode(String.self, forKey: .platform)) ?? .unknown
         launch = Launch(rawValue: try c.decode(String.self, forKey: .launch)) ?? .cidre
-        source = Source(rawValue: try c.decode(String.self, forKey: .source)) ?? .steam
+        // (une source inconnue : hors Steam, sans action Steam ni dossier Cidre)
+        source = Source(rawValue: try c.decode(String.self, forKey: .source)) ?? .local
         installed = try c.decode(Bool.self, forKey: .installed)
         wrapper = try c.decodeIfPresent(Bool.self, forKey: .wrapper)
         path = try c.decode(String.self, forKey: .path)
@@ -668,5 +670,27 @@ public struct DownloadProgress: Hashable, Sendable {
             found = DownloadProgress(fraction: min(percent / 100, 1), doneBytes: done, totalBytes: total)
         }
         return found
+    }
+}
+
+/// Le client Battle.net de Cidre, `cidre battlenet etat --json`.
+public struct BattleNetStatus: Decodable, Sendable, Equatable {
+    /// Le prefixe Wine ou vit le client.
+    public let prefix: String
+    public let installed: Bool
+    public let open: Bool
+    /// Le jeu pour lequel Cidre l'a ouvert (`client` : pour lui-meme).
+    public let openFor: String?
+    /// Le jeu Battle.net qui tourne, s'il y en a un.
+    public let runningGame: String?
+    public let gameCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case prefix = "prefixe"
+        case installed = "installe"
+        case open = "ouvert"
+        case openFor = "pour"
+        case runningGame = "jeu"
+        case gameCount = "jeux"
     }
 }

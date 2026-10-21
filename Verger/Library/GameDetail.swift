@@ -26,6 +26,7 @@ struct GameDetail: View {
         case .steam: L10n.string("Client Steam")
         case .cidre: L10n.string("Dossier Cidre")
         case .local: L10n.string("Hors Steam")
+        case .battlenet: L10n.string("Battle.net")
         }
     }
 
@@ -275,6 +276,12 @@ struct GameDetail: View {
                     Button("Désinstaller…", role: .destructive) { confirmingUninstall = true }
                         .frame(maxWidth: .infinity)
                         .disabled(library.running.contains(game.id))
+                case .battlenet:
+                    // Battle.net installe, met a jour et desinstalle ses jeux lui-meme.
+                    Button("Ouvrir Battle.net") { library.openBattleNet() }
+                        .frame(maxWidth: .infinity)
+                        .disabled(library.running.contains(game.id))
+                        .help("Le client Battle.net installe, met à jour et désinstalle ce jeu.")
                 }
             }
         }

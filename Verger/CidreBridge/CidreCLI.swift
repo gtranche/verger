@@ -553,6 +553,17 @@ public struct CidreCLI: Sendable {
         _ = try await checked(["rm", id])
     }
 
+    /// Le client Battle.net de Cidre (`cidre battlenet etat --json`).
+    public func battleNetStatus() async throws -> BattleNetStatus {
+        try await json(["battlenet", "etat", "--json"])
+    }
+
+    /// Ouvre le client Battle.net (se connecter, installer, mettre a jour ou
+    /// desinstaller un jeu), sans attendre qu'il se ferme.
+    public func openBattleNet() async throws {
+        _ = try await checked(["battlenet", "ouvrir"])
+    }
+
     // MARK: Plomberie
 
     func json<T: Decodable>(_ arguments: [String]) async throws -> T {

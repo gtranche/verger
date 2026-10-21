@@ -666,3 +666,7 @@
 "HashLink" = "HashLink";
 "Stingray" = "Stingray";
 "Godot" = "Godot";
+"Ouvrir Battle.net" = "Open Battle.net";
+"Le client Battle.net installe, met à jour et désinstalle ce jeu." = "The Battle.net client installs, updates and uninstalls this game.";
+"Installé par Battle.net : à déplacer depuis son client" = "Installed by Battle.net: move it from its client";
+"Battle.net" = "Battle.net";

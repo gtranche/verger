@@ -252,6 +252,7 @@ private struct RowStatus: View {
         switch game.source {
         case .steam: return L10n.string("Installé par Steam : à déplacer depuis Steam")
         case .local: return L10n.string("Hors Steam : ses fichiers restent où ils sont")
+        case .battlenet: return L10n.string("Installé par Battle.net : à déplacer depuis son client")
         case .cidre: return ""
         }
     }
