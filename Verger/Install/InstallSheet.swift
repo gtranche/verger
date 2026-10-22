@@ -40,16 +40,21 @@ struct InstallSheet: View {
                 .padding(.horizontal)
                 .padding(.bottom, 10)
 
-            // Plusieurs emplacements (un disque externe) : ou installer.
-            let usable = library.locations.filter(\.acceptsGames)
-            if library.locationsSupported == true, usable.count > 1 || library.locations.contains(where: { $0.isDefault && !$0.online }) {
+            // Un disque externe branche (ou connu) : sur quel disque installer.
+            let disks = library.disks
+            if library.locationsSupported == true, disks.count > 1 {
                 HStack {
-                    Picker("Installer dans", selection: Binding(
+                    Picker("Installer sur", selection: Binding(
                         get: { library.effectiveInstallLocation?.id ?? "principal" },
-                        set: { library.installLocation = $0 }
+                        set: { id in
+                            guard let disk = disks.first(where: { $0.id == id }) else { return }
+                            Task { await library.chooseInstallDisk(disk) }
+                        }
                     )) {
-                        ForEach(usable) { location in
-                            Text(verbatim: MoveMenu.label(location)).tag(location.id)
+                        ForEach(disks) { disk in
+                            Label { Text(verbatim: disk.label) } icon: { Image(systemName: disk.symbol) }
+                                .tag(disk.id)
+                                .selectionDisabled(!disk.online || !disk.acceptsGames)
                         }
                     }
                     .fixedSize()
@@ -58,7 +63,7 @@ struct InstallSheet: View {
                 .padding(.horizontal)
                 .padding(.bottom, 10)
                 if let unplugged = library.locations.first(where: { $0.isDefault && !$0.online }) {
-                    Text(verbatim: L10n.format("« %@ », l'emplacement par défaut, n'est pas branché : les jeux iront dans celui choisi ci-dessus.", unplugged.name))
+                    Text(verbatim: L10n.format("« %@ », le disque des nouveaux jeux, n'est pas branché : les jeux iront sur celui choisi ci-dessus.", unplugged.name))
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .frame(maxWidth: .infinity, alignment: .leading)

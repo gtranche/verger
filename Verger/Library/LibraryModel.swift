@@ -123,6 +123,9 @@ final class LibraryModel {
     private(set) var moveQueue = MoveQueue()
     /// Le disque montre par la page Stockage ; `nil` : ce Mac.
     var storagePageLocation: String?
+    /// Les volumes montes sur lesquels on pourrait mettre des jeux (relus avec
+    /// les emplacements).
+    private(set) var mountedVolumes: [MountedVolume] = []
 
     /// L'etat du runtime Cidre (`cidre status`), et la release plus recente s'il y en a une.
     private(set) var runtimeStatus: RuntimeStatus?
@@ -1016,6 +1019,7 @@ final class LibraryModel {
                 locations = found.locations
                 detectedLocations = found.detected
                 locationsSupported = true
+                mountedVolumes = await Task.detached(priority: .utility) { MountedVolume.current() }.value
                 await refreshAvailableCapacity()
             } else {
                 locations = []
@@ -1061,6 +1065,41 @@ final class LibraryModel {
         if installLocation == location.id { installLocation = nil }
         await loadLocations()
         await reload()
+    }
+
+    /// Ce Mac, chaque disque externe branche (connu de Cidre ou non), puis les
+    /// disques debranches.
+    var disks: [GameDisk] {
+        GameDisk.list(locations: locations, mounted: mountedVolumes)
+    }
+
+    /// L'emplacement Cidre d'un disque ; un disque que Cidre ne connait pas
+    /// encore lui est ajoute (`cidre emplacements ajouter /Volumes/<nom>` : un
+    /// dossier « Jeux Cidre » a sa racine, ou celui qui y est deja). `nil` : refuse
+    /// (l'erreur est dans `lastError`).
+    func location(for disk: GameDisk) async -> StorageLocation? {
+        if let location = disk.location { return location }
+        guard let volume = disk.volume else { return nil }
+        return await addLocation(URL(fileURLWithPath: volume.path, isDirectory: true))
+    }
+
+    /// Le disque ou vont les nouveaux jeux : en faire le defaut de Cidre.
+    func setDefaultDisk(_ disk: GameDisk) async {
+        guard let location = await location(for: disk) else { return }
+        await setDefaultLocation(location)
+    }
+
+    /// Le disque choisi a l'installation ; s'il est nouveau, Cidre l'apprend
+    /// tout de suite.
+    func chooseInstallDisk(_ disk: GameDisk) async {
+        guard let location = await location(for: disk) else { return }
+        installLocation = location.id
+    }
+
+    /// Deplace un jeu vers un disque, en l'ajoutant a Cidre au besoin.
+    func move(_ game: Game, to disk: GameDisk) async {
+        guard let location = await location(for: disk) else { return }
+        move(game, to: location)
     }
 
     func setDefaultLocation(_ location: StorageLocation) async {
@@ -1219,6 +1258,12 @@ final class LibraryModel {
             moveQueue.enqueue(.init(gameID: game.id, name: game.name, sizeBytes: size(of: game), to: location.id))
         }
         startNextQueuedMove()
+    }
+
+    /// Met des jeux en file pour un disque, en l'ajoutant a Cidre au besoin.
+    func enqueueMoves(_ selected: [Game], to disk: GameDisk) async {
+        guard let location = await location(for: disk) else { return }
+        enqueueMoves(selected, to: location)
     }
 
     /// Retire un deplacement qui n'a pas encore commence.

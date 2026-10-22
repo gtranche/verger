@@ -32,46 +32,42 @@ struct MoveProgress: View {
     }
 }
 
-/// « Déplacer vers… » : les autres emplacements branches, ou en ajouter un.
-/// Un deplacement se confirme : il prend du temps, et le jeu ne se lance pas
-/// pendant ce temps.
+/// « Déplacer vers… » : les disques, comme sur une console -- ce Mac, puis
+/// chaque disque externe branche avec sa place libre. Un disque que Cidre ne
+/// connait pas encore lui est ajoute au moment de deplacer. Un deplacement se
+/// confirme : il prend du temps, et le jeu ne se lance pas pendant ce temps.
 struct MoveMenu: View {
     let game: Game
+    /// Un petit « Déplacer… » a cote du nom du disque, dans la fiche.
+    var compact = false
     @Environment(LibraryModel.self) private var library
-    @State private var target: StorageLocation?
-
-    private var targets: [StorageLocation] {
-        library.locations.filter { $0.id != game.location && $0.acceptsGames }
-    }
+    @State private var target: GameDisk?
 
     var body: some View {
-        Menu("Déplacer vers…") {
-            ForEach(targets) { location in
-                Button {
-                    target = location
-                } label: {
-                    Text(verbatim: Self.label(location))
+        let disks = library.disks
+        let here = disks.first { $0.location?.id == game.location }
+        Menu(compact ? "Déplacer…" : "Déplacer vers…") {
+            ForEach(disks) { disk in
+                if disk.id == here?.id {
+                    Text(verbatim: L10n.format("%@ (ici)", disk.name))
+                } else if !disk.online {
+                    Text(verbatim: disk.label)
+                } else {
+                    Button {
+                        target = disk
+                    } label: {
+                        Label { Text(verbatim: disk.label) } icon: { Image(systemName: disk.symbol) }
+                    }
+                    .disabled(!disk.acceptsGames)
                 }
             }
-            let offline = library.locations.filter { $0.id != game.location && !$0.online }
-            if !offline.isEmpty {
-                Section("Débranchés") {
-                    ForEach(offline) { location in
-                        Text(verbatim: location.name)
-                    }
-                }
-            }
-            if !targets.isEmpty || !offline.isEmpty { Divider() }
-            Button("Ajouter un disque ou un dossier…") {
-                Task {
-                    guard let folder = StoragePanel.chooseFolder() else { return }
-                    if let added = await library.addLocation(folder), added.acceptsGames, added.id != game.location {
-                        target = added
-                    }
-                }
+            if disks.count < 2 {
+                Divider()
+                Text("Branche un disque externe pour y mettre des jeux.")
             }
         }
-        .frame(maxWidth: .infinity)
+        .fixedSize()
+        .frame(maxWidth: compact ? nil : .infinity)
         .disabled(!game.online || game.source != .cidre || library.running.contains(game.id)
             || library.moveStatus(of: game)?.isRunning == true
             || (game.appid.map { library.downloads[$0] != nil } ?? false))
@@ -80,31 +76,28 @@ struct MoveMenu: View {
             Text(verbatim: L10n.format("Déplacer %@ vers « %@ » ?", game.name, target?.name ?? "")),
             isPresented: Binding(get: { target != nil }, set: { if !$0 { target = nil } }),
             presenting: target
-        ) { location in
-            Button("Déplacer") { library.move(game, to: location) }
-        } message: { location in
-            Text(verbatim: Self.explanation(game: game, to: location))
+        ) { disk in
+            Button("Déplacer") { Task { await library.move(game, to: disk) } }
+        } message: { disk in
+            Text(verbatim: Self.explanation(game: game, to: disk))
         }
     }
 
-    static func label(_ location: StorageLocation) -> String {
-        guard let free = location.freeBytes else { return location.name }
-        return L10n.format("%@ — %@ libres", location.name, L10n.bytes(free))
-    }
-
-    static func explanation(game: Game, to location: StorageLocation) -> String {
-        var text = L10n.format("Le jeu (%@) est copié sur « %@ », la copie est vérifiée, puis il est effacé d'ici. Ses sauvegardes et ses réglages ne bougent pas. Pendant le déplacement, il ne se lance pas ; s'il est interrompu, rien n'est perdu et il pourra reprendre.", L10n.bytes(game.sizeBytes), location.name)
-        if let free = location.freeBytes, game.sizeBytes > 0, free < game.sizeBytes {
-            text += "\n\n" + L10n.format("Attention : il n'y a que %@ de libres sur « %@ ».", L10n.bytes(free), location.name)
+    static func explanation(game: Game, to disk: GameDisk) -> String {
+        var text = L10n.format("Le jeu (%@) est copié sur « %@ », la copie est vérifiée, puis il est effacé d'ici. Ses sauvegardes et ses réglages ne bougent pas. Pendant le déplacement, il ne se lance pas ; s'il est interrompu, rien n'est perdu et il pourra reprendre.", L10n.bytes(game.sizeBytes), disk.name)
+        if let free = disk.freeBytes, game.sizeBytes > 0, free < game.sizeBytes {
+            text += "\n\n" + L10n.format("Attention : il n'y a que %@ de libres sur « %@ ».", L10n.bytes(free), disk.name)
         }
-        if location.fileSystem == "exfat" {
+        if disk.isNew {
+            text += "\n\n" + L10n.format("Un dossier « Jeux Cidre » sera créé sur « %@ » ; le reste du disque n'est pas touché.", disk.name)
+        } else if disk.location?.fileSystem == "exfat" {
             text += "\n\n" + L10n.string("Ce disque est en exFAT : les jeux s'y lancent, mais APFS convient mieux à un disque réservé au Mac.")
         }
         return text
     }
 }
 
-/// Le choix d'un disque ou d'un dossier pour les jeux.
+/// Le choix d'un dossier pour les jeux (reglages avances).
 enum StoragePanel {
     @MainActor
     static func chooseFolder() -> URL? {

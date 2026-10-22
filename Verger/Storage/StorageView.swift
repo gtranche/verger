@@ -321,8 +321,8 @@ private struct MoveBar: View {
 
     private var movable: [Game] { selected.filter(library.canMove) }
     private var movableBytes: Int64 { movable.reduce(0) { $0 + library.size(of: $1) } }
-    private var targets: [StorageLocation] {
-        library.locations.filter { $0.id != location.id && $0.acceptsGames }
+    private var targets: [GameDisk] {
+        library.disks.filter { $0.id != location.id && $0.online && $0.acceptsGames }
     }
 
     var body: some View {
@@ -339,12 +339,13 @@ private struct MoveBar: View {
             }
             Spacer()
             if targets.isEmpty {
-                Text("Aucun autre disque branché : ajoutes-en un dans Réglages › Stockage.")
+                Text("Aucun autre disque branché : branches-en un pour y déplacer des jeux.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             ForEach(targets) { target in
                 Button {
-                    library.enqueueMoves(movable, to: target)
+                    let games = movable
+                    Task { await library.enqueueMoves(games, to: target) }
                     didEnqueue()
                 } label: {
                     Text(verbatim: L10n.format("Déplacer vers « %@ »", target.name))
@@ -370,7 +371,7 @@ private struct MoveBar: View {
     private var warning: String? {
         guard movableBytes > 0 else { return nil }
         let short = targets.filter { target in
-            guard let free = library.usage(of: target)?.freeBytes else { return false }
+            guard let free = target.location.flatMap(library.usage(of:))?.freeBytes ?? target.freeBytes else { return false }
             return free - library.moveQueue.pendingBytes(to: target.id) < movableBytes
         }
         guard !short.isEmpty else { return nil }

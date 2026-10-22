@@ -35,14 +35,20 @@ struct GameDetail: View {
             Section {
                 LabeledContent("Plateforme") { PlatformBadge(game: game) }
                 LabeledContent("Source", value: sourceLabel)
-                // un jeu Cidre vit dans un emplacement : ce Mac, ou un disque
+                // un jeu Cidre vit sur un disque : ce Mac, ou un disque externe ;
+                // il se deplace d'ici, comme sur une console
                 if game.source == .cidre, let name = library.locationName(of: game) {
-                    LabeledContent("Emplacement") {
-                        if game.online {
-                            Text(verbatim: name)
-                        } else {
-                            Label(L10n.format("%@ (débranché)", name), systemImage: "externaldrive.badge.xmark")
-                                .foregroundStyle(.orange)
+                    LabeledContent("Disque") {
+                        HStack(spacing: 8) {
+                            if game.online {
+                                Text(verbatim: name)
+                            } else {
+                                Label(L10n.format("%@ (débranché)", name), systemImage: "externaldrive.badge.xmark")
+                                    .foregroundStyle(.orange)
+                            }
+                            if game.installed || !game.online, library.locationsSupported == true {
+                                MoveMenu(game: game, compact: true)
+                            }
                         }
                     }
                 }
@@ -224,11 +230,6 @@ struct GameDetail: View {
                 }
                 .frame(maxWidth: .infinity)
                 .disabled(!game.online)
-
-                // un jeu Cidre change d'emplacement (un disque externe et retour)
-                if game.source == .cidre, game.installed || !game.online, library.locationsSupported == true {
-                    MoveMenu(game: game)
-                }
 
                 if game.launch == .cidre {
                     Button("Afficher le journal…") { showingLog = true }

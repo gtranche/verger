@@ -286,6 +286,50 @@ struct StorageTests {
             .write(to: script, atomically: true, encoding: .utf8)
         #expect(try await CidreCLI(executable: script).storageLocations() == nil)
     }
+
+    /// Les disques, comme sur une console : ce Mac, les disques branches (connus
+    /// de Cidre ou non), puis les debranches ; un dossier de ce Mac n'en est pas un.
+    @Test func disks() throws {
+        let locations = try decode([StorageLocation].self, """
+        [{"id":"principal","nom":"Ce Mac","chemin":"/Users/x/Cidre/games","volume":null,"en_ligne":true,"defaut":false,"principal":true,"libre":100,"total":1000,"inscriptible":true,"jeux":5,"taille_jeux":50},
+         {"id":"ssk-ssd-eaef","nom":"SSK SSD","chemin":"/Volumes/SSK SSD/Jeux Cidre","volume":"SSK SSD","en_ligne":true,"defaut":true,"principal":false,"libre":350,"total":500,"inscriptible":true,"jeux":2,"taille_jeux":118},
+         {"id":"vieux-1234","nom":"Vieux","chemin":"/Volumes/Vieux/Jeux Cidre","volume":"Vieux","en_ligne":false,"principal":false,"jeux":2,"taille_jeux":3000},
+         {"id":"jeux-abcd","nom":"~/Jeux","chemin":"/Users/x/Jeux","volume":null,"en_ligne":true,"principal":false,"jeux":1,"taille_jeux":1}]
+        """)
+        let mounted = [
+            MountedVolume(name: "Clé", path: "/Volumes/Clé", freeBytes: 64, totalBytes: 128),
+            MountedVolume(name: "SSK SSD", path: "/Volumes/SSK SSD", freeBytes: 351, totalBytes: 500),
+        ]
+        let disks = GameDisk.list(locations: locations, mounted: mounted)
+        #expect(disks.map(\.id) == ["principal", "volume:/Volumes/Clé", "ssk-ssd-eaef", "vieux-1234"])
+        #expect(disks[0].kind == .thisMac && disks[0].symbol == "internaldrive")
+        // un disque nouveau : pas d'emplacement, mais sa place libre
+        #expect(disks[1].isNew && disks[1].online && disks[1].acceptsGames && disks[1].freeBytes == 64)
+        #expect(disks[1].volume?.path == "/Volumes/Clé")
+        #expect(disks[2].isDefault && disks[2].freeBytes == 350 && disks[2].kind == .external)
+        #expect(!disks[3].online && !disks[3].acceptsGames && disks[3].symbol == "externaldrive.badge.xmark")
+        #expect(disks[3].label.contains("Vieux"))
+
+        let games = try decode([Game].self, """
+        [{"id":"1137300","appid":1137300,"nom":"Sherlock","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/Users/x/Cidre/games/1137300","emplacement":"principal"},
+         {"id":"1245620","appid":1245620,"nom":"Elden","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/Volumes/SSK SSD/Jeux Cidre/1245620","emplacement":"ssk-ssd-eaef"},
+         {"id":"local-x","nom":"X","plateforme":"windows","lancement":"cidre","source":"local","installe":true,"chemin":"/Volumes/Clé/X"}]
+        """)
+        #expect(GameDisk.of(games[0], among: disks)?.id == "principal")
+        #expect(GameDisk.of(games[1], among: disks)?.id == "ssk-ssd-eaef")
+        #expect(GameDisk.of(games[2], among: disks)?.id == "volume:/Volumes/Clé")
+    }
+
+    /// Deux emplacements sur un meme volume : le disque prend celui par defaut.
+    @Test func diskWithTwoLocations() throws {
+        let locations = try decode([StorageLocation].self, """
+        [{"id":"principal","nom":"Ce Mac","chemin":"/a","en_ligne":true,"principal":true},
+         {"id":"ssd-1","nom":"SSD","chemin":"/Volumes/SSD/Jeux Cidre","volume":"SSD","en_ligne":true},
+         {"id":"ssd-2","nom":"SSD","chemin":"/Volumes/SSD/Autres","volume":"SSD","en_ligne":true,"defaut":true}]
+        """)
+        let disks = GameDisk.list(locations: locations, mounted: [MountedVolume(name: "SSD", path: "/Volumes/SSD")])
+        #expect(disks.map(\.id) == ["principal", "ssd-2"])
+    }
 }
 
 private final class MoveEvents: @unchecked Sendable {
@@ -293,4 +337,5 @@ private final class MoveEvents: @unchecked Sendable {
     private var values: [MoveStatus] = []
     func add(_ value: MoveStatus) { lock.lock(); values.append(value); lock.unlock() }
     var all: [MoveStatus] { lock.lock(); defer { lock.unlock() }; return values }
+
 }
