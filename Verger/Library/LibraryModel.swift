@@ -219,6 +219,11 @@ final class LibraryModel {
         } catch {
             state = .failed(error.localizedDescription)
         }
+        // le prefixe du client Battle.net, pour les jaquettes de ses jeux
+        // installes hors de lui (un disque externe)
+        if Cover.battleNetPrefix == nil, games.contains(where: { $0.source == .battlenet }) {
+            Cover.battleNetPrefix = try? await cli.battleNetStatus().prefix
+        }
     }
 
     func useCidre(at url: URL) async {

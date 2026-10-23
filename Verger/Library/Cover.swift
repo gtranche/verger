@@ -1,10 +1,13 @@
+import CidreBridge
 import SwiftUI
 
 /// La vignette d'un jeu, au format portrait de la bibliotheque Steam.
 ///
 /// On cherche, dans l'ordre : la jaquette posee par l'utilisateur, la jaquette
 /// portrait que le client Steam a deja en cache, celle du CDN de Steam, puis
-/// l'image d'en-tete (paysage) du jeu, en cache puis sur le CDN. Tous les jeux n'ont pas de jaquette portrait, et
+/// l'image d'en-tete (paysage) du jeu, en cache puis sur le CDN. Un jeu
+/// Battle.net prend l'image que le client de Blizzard garde en cache
+/// (BattleNetArt), sinon celle du meme jeu sur Steam. Tous les jeux n'ont pas de jaquette portrait, et
 /// certains (outils, jeux hors Steam) n'ont aucune image : il reste alors un
 /// carton au nom du jeu.
 struct Cover: View {
@@ -14,6 +17,13 @@ struct Cover: View {
     /// `nil` pour un jeu hors Steam : rien a chercher chez Steam.
     let appid: Int?
     let name: String
+    /// Le dossier du jeu : un jeu Battle.net installe dans le prefixe du client
+    /// y trouve son cache d'images.
+    var path = ""
+
+    /// Le prefixe du client Battle.net (`cidre battlenet etat`), pour un jeu
+    /// installe hors de lui.
+    @MainActor static var battleNetPrefix: String?
 
     @State private var art: Art?
     private var store: CoverStore { CoverStore.shared }
@@ -23,6 +33,9 @@ struct Cover: View {
             switch art {
             case let .portrait(image):
                 Image(nsImage: image).resizable()
+            case let .fill(image):
+                // un portrait 3:4 (Battle.net) dans le cadre 2:3 : rogne sur les cotes
+                Color.clear.overlay(Image(nsImage: image).resizable().scaledToFill())
             case let .landscape(image):
                 // Une image paysage dans un cadre portrait : entiere au centre,
                 // sur elle-meme agrandie et floutee pour remplir le cadre.
@@ -40,6 +53,8 @@ struct Cover: View {
         .task(id: "\(id)#\(store.revision)") {
             if let custom = store.customCover(for: id), let image = NSImage(contentsOf: custom) {
                 art = .portrait(image)
+            } else if let code = BattleNetArt.code(of: id) {
+                art = await Self.battleNetArt(code: code, path: path)
             } else {
                 art = await Self.art(for: appid)
             }
@@ -67,6 +82,7 @@ struct Cover: View {
 
     enum Art {
         case portrait(NSImage)
+        case fill(NSImage)
         case landscape(NSImage)
     }
 
@@ -89,6 +105,25 @@ struct Cover: View {
             art = .landscape(image)
         }
         found[appid] = art
+        return art
+    }
+
+    @MainActor private static var foundBattleNet: [String: Art?] = [:]
+
+    /// L'image d'un jeu Battle.net : celle du cache du client, sinon la
+    /// jaquette du meme jeu sur Steam (Diablo IV).
+    @MainActor
+    static func battleNetArt(code: String, path: String) async -> Art? {
+        if let known = foundBattleNet[code] { return known }
+        var art: Art?
+        if let prefix = BattleNetArt.prefix(ofGamePath: path) ?? battleNetPrefix,
+           let found = await Task.detached(priority: .utility, operation: { BattleNetArt.find(code: code, prefix: prefix) }).value,
+           let image = NSImage(contentsOf: found.file) {
+            art = found.isPortrait ? .fill(image) : .landscape(image)
+        } else if let appid = BattleNetArt.steamAppIDs[code] {
+            art = await Self.art(for: appid)
+        }
+        foundBattleNet[code] = art
         return art
     }
 

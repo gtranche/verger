@@ -28,7 +28,7 @@ struct GameCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Cover(id: game.id, appid: game.appid, name: game.name)
+            Cover(id: game.id, appid: game.appid, name: game.name, path: game.path)
                 // hors ligne : grise, ni perdu ni desinstalle
                 .saturation(game.online ? 1 : 0)
                 .opacity(game.online ? 1 : 0.45)

@@ -37,7 +37,7 @@ IGNORES = {
     "Verger", "Cidre", "Steam", "macOS · Windows", "Windows", "CIDRE_STEAM_USER", "VERGER_CIDRE",
     "VERGER_RUNTIME_URL", "VERGER_RUNTIME_VERSION", "VERGER_CIDRE_HOME", "PATH", "Accept", "Authorization",
     "Bearer %@", "CFBundleShortVersionString", "Français", "English", "Deutsch", "Español", "Italiano",
-    "Português", "Polski", "%@#%@", "sleep 1; /usr/bin/open \"$0\"", "Verger.zip", "Verger (version précédente)", "Volumes", "taillesJeux", "masquerJeuxDebranches",
+    "Português", "Polski", "%@#%@", "sleep 1; /usr/bin/open \"$0\"", "Verger.zip", "Verger (version précédente)", "Volumes", "taillesJeux", "masquerJeuxDebranches", "KEY_ART", "INSTALL_BACKGROUND", "/drive_c/", "AppData/Local/Battle.net/Cache",
     "%@", "%lld", "dl %@", "play %@", "move %@ %@", "emplacements --json", "emplacements ajouter",
     "APFS", "exFAT", "FAT32", "brew install ", "steam guard code:", "two-factor code:",
     "confirm the login in the steam mobile app", "waiting for user info...ok", "invalid password",
