@@ -467,7 +467,6 @@
 "%@ libres" = "%@ free";
 "Mac OS étendu" = "Mac OS Extended";
 "réseau" = "network";
-"Hors ligne" = "Offline";
 "%@ (débranché)" = "%@ (unplugged)";
 "Le déplacement de ce jeu s'est arrêté avant la fin : il est toujours ici, intact." = "Moving this game stopped before the end: it is still here, intact.";
 "Reprendre le déplacement" = "Resume Moving";
@@ -686,3 +685,16 @@
 "%@ — débranché" = "%@ — unplugged";
 "Disque" = "Drive";
 "Déplacer…" = "Move…";
+
+/* Disque debranche : bandeau de la bibliotheque */
+"Masquer" = "Hide";
+"Les jeux d'un disque débranché ne se lancent pas ; ils reviennent dès qu'on le rebranche." = "Games on an unplugged drive can't be launched; they come back as soon as it is plugged in again.";
+"Un disque" = "A drive";
+"%@ sont débranchés" = "%@ are unplugged";
+"%@ est débranché" = "%@ is unplugged";
+"son jeu est grisé, à la fin de la liste" = "its game is dimmed, at the end of the list";
+"son jeu est masqué" = "its game is hidden";
+"%@ jeux sont grisés, à la fin de la liste" = "%@ games are dimmed, at the end of the list";
+"%@ jeux sont masqués" = "%@ games are hidden";
+"%@ : %@. Rebranche-les pour jouer." = "%@: %@. Plug them back in to play.";
+"%@ : %@. Rebranche-le pour jouer." = "%@: %@. Plug it back in to play.";

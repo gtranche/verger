@@ -320,6 +320,24 @@ struct StorageTests {
         #expect(GameDisk.of(games[2], among: disks)?.id == "volume:/Volumes/Clé")
     }
 
+    /// Les jeux d'un disque debranche, par disque : par leur emplacement Cidre,
+    /// sinon par le volume de leur chemin (Battle.net).
+    @Test func unpluggedGamesByDisk() throws {
+        let locations = try decode([StorageLocation].self, """
+        [{"id":"principal","nom":"Ce Mac","chemin":"/a","en_ligne":true,"principal":true},
+         {"id":"ssk-ssd-eaef","nom":"SSK SSD","chemin":"/Volumes/SSK SSD/Jeux Cidre","volume":"SSK SSD","en_ligne":false}]
+        """)
+        let games = try decode([Game].self, """
+        [{"id":"1245620","appid":1245620,"nom":"Elden","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/Volumes/SSK SSD/Jeux Cidre/1245620","emplacement":"ssk-ssd-eaef","en_ligne":false},
+         {"id":"bnet-osi","nom":"Diablo II","plateforme":"windows","lancement":"cidre","source":"battlenet","installe":true,"chemin":"/Volumes/SSK SSD/Jeux Cidre/Battle.net/Diablo II Resurrected","en_ligne":false},
+         {"id":"588650","appid":588650,"nom":"Dead Cells","plateforme":"windows","lancement":"cidre","source":"cidre","installe":true,"chemin":"/a/588650","emplacement":"principal","en_ligne":true}]
+        """)
+        let groups = GameDisk.unplugged(games, among: locations)
+        #expect(groups.map(\.disk) == ["SSK SSD"])
+        #expect(groups[0].games.map(\.id) == ["1245620", "bnet-osi"])
+        #expect(GameDisk.unpluggedName(of: games[1], among: locations) == "SSK SSD")
+    }
+
     /// Deux emplacements sur un meme volume : le disque prend celui par defaut.
     @Test func diskWithTwoLocations() throws {
         let locations = try decode([StorageLocation].self, """

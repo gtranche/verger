@@ -61,7 +61,7 @@ extension StorageLocation {
     }
 
     /// « SSD » pour /Volumes/SSD/... ; `nil` sur le disque du Mac.
-    static func volumeName(of path: String) -> String? {
+    public static func volumeName(of path: String) -> String? {
         let parts = path.split(separator: "/", omittingEmptySubsequences: true)
         guard parts.count >= 2, parts[0] == "Volumes" else { return nil }
         return String(parts[1])

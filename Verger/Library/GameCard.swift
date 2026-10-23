@@ -46,7 +46,7 @@ struct GameCard: View {
                 HStack(spacing: 6) {
                     PlatformBadge(game: game)
                     if !game.online {
-                        Label("Hors ligne", systemImage: "externaldrive.badge.xmark")
+                        Label("Débranché", systemImage: "externaldrive.badge.xmark")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)

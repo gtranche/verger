@@ -117,4 +117,20 @@ public struct GameDisk: Identifiable, Hashable, Sendable {
         }
         return disks.first { $0.kind == .thisMac }
     }
+
+    /// Le nom du disque debranche ou est un jeu hors ligne (« SSK SSD ») :
+    /// celui de son emplacement Cidre, sinon le volume de son chemin (un jeu
+    /// Battle.net) ; `nil` si on ne sait pas.
+    public static func unpluggedName(of game: Game, among locations: [StorageLocation]) -> String? {
+        if let id = game.location, let location = locations.first(where: { $0.id == id }) { return location.name }
+        return StorageLocation.volumeName(of: game.path)
+    }
+
+    /// Les jeux hors ligne, par disque debranche (dans l'ordre des noms) ;
+    /// « » pour ceux dont on ne connait pas le disque.
+    public static func unplugged(_ games: [Game], among locations: [StorageLocation]) -> [(disk: String, games: [Game])] {
+        let offline = games.filter { !$0.online }
+        let groups = Dictionary(grouping: offline) { unpluggedName(of: $0, among: locations) ?? "" }
+        return groups.keys.sorted { $0.localizedStandardCompare($1) == .orderedAscending }.map { ($0, groups[$0]!) }
+    }
 }

@@ -150,8 +150,20 @@ final class LibraryModel {
 
     private(set) var cli: CidreCLI?
 
+    /// Les jeux d'un disque debranche sont-ils caches de la grille ? (Sinon,
+    /// grises, apres les autres.) Retenu d'une ouverture a l'autre.
+    var hidesUnpluggedGames = UserDefaults.standard.bool(forKey: "masquerJeuxDebranches") {
+        didSet { UserDefaults.standard.set(hidesUnpluggedGames, forKey: "masquerJeuxDebranches") }
+    }
+
+    /// Les jeux hors ligne, par disque debranche.
+    var unpluggedGames: [(disk: String, games: [Game])] {
+        GameDisk.unplugged(games, among: locations)
+    }
+
     var visibleGames: [Game] {
         games
+            .filter { !hidesUnpluggedGames || $0.online }
             .filter { game in
                 switch filter {
                 case .all: true
@@ -160,7 +172,11 @@ final class LibraryModel {
                 }
             }
             .filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            // ceux d'un disque debranche a la fin : on ne peut pas y jouer
+            .sorted { a, b in
+                if a.online != b.online { return a.online }
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
     }
 
     // MARK: Bibliotheque

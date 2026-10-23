@@ -204,7 +204,9 @@ struct LibraryView: View {
                 Button("Choisir la commande cidre…") { chooseCidre() }
             }
         case .loaded:
-            if library.visibleGames.isEmpty {
+            // (tous les jeux sur un disque debranche, et masques : la grille
+            // vide garde son bandeau, pour les reafficher)
+            if library.visibleGames.isEmpty, !(library.hidesUnpluggedGames && !library.unpluggedGames.isEmpty) {
                 ContentUnavailableView {
                     Label(library.games.isEmpty ? "Aucun jeu installé" : "Aucun jeu ne correspond", systemImage: "leaf")
                 } actions: {
@@ -215,7 +217,12 @@ struct LibraryView: View {
                 }
             } else {
                 grid
-                    .safeAreaInset(edge: .top, spacing: 0) { RuntimeBanners() }
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        VStack(spacing: 0) {
+                            RuntimeBanners()
+                            UnpluggedBanner()
+                        }
+                    }
                     .safeAreaInset(edge: .bottom, spacing: 0) { shareBanner }
             }
         }
@@ -342,5 +349,52 @@ struct LibraryView: View {
 
     private var errorShown: Binding<Bool> {
         Binding(get: { library.lastError != nil }, set: { if !$0 { library.lastError = nil; library.lastErrorGame = nil } })
+    }
+}
+
+/// Un disque debranche : ses jeux restent dans la bibliotheque, grises et a la
+/// fin, ou masques ; ils reviennent des qu'on le rebranche (Verger relit la
+/// bibliotheque a chaque disque branche ou debranche).
+struct UnpluggedBanner: View {
+    @Environment(LibraryModel.self) private var library
+
+    var body: some View {
+        let groups = library.unpluggedGames
+        if !groups.isEmpty {
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    Label { Text(verbatim: Self.message(groups, hidden: library.hidesUnpluggedGames)) } icon: {
+                        Image(systemName: "externaldrive.badge.xmark")
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(library.hidesUnpluggedGames ? "Afficher" : "Masquer") {
+                        library.hidesUnpluggedGames.toggle()
+                    }
+                    .help("Les jeux d'un disque débranché ne se lancent pas ; ils reviennent dès qu'on le rebranche.")
+                }
+                .font(.callout)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                Divider()
+            }
+            .background(.bar)
+        }
+    }
+
+    /// « SSK SSD est débranché : ses 3 jeux sont grisés. »
+    static func message(_ groups: [(disk: String, games: [Game])], hidden: Bool) -> String {
+        let count = groups.reduce(0) { $0 + $1.games.count }
+        let names = groups.map(\.disk).filter { !$0.isEmpty }
+        let disks = names.isEmpty ? L10n.string("Un disque") : names.map { "« \($0) »" }.joined(separator: ", ")
+        let unplugged = names.count > 1 ? L10n.format("%@ sont débranchés", disks) : L10n.format("%@ est débranché", disks)
+        let games: String
+        switch (count, hidden) {
+        case (1, false): games = L10n.string("son jeu est grisé, à la fin de la liste")
+        case (1, true): games = L10n.string("son jeu est masqué")
+        case (_, false): games = L10n.format("%@ jeux sont grisés, à la fin de la liste", String(count))
+        case (_, true): games = L10n.format("%@ jeux sont masqués", String(count))
+        }
+        return L10n.format(names.count > 1 ? "%@ : %@. Rebranche-les pour jouer." : "%@ : %@. Rebranche-le pour jouer.", unplugged, games)
     }
 }
