@@ -81,7 +81,7 @@ struct StorageView: View {
                 }
                 .width(min: 80, ideal: 100, max: 140)
                 TableColumn("État") { row in
-                    RowStatus(game: row.game)
+                    RowStatus(game: row.game, library: library)
                 }
                 .width(min: 160, ideal: 240)
             }
@@ -214,10 +214,12 @@ private struct DiskHeader: View {
 }
 
 /// Ce que devient un jeu : en deplacement, en attente, ou pourquoi il ne se
-/// deplace pas d'ici.
+/// deplace pas d'ici. `library` est passe, pas lu dans l'environnement : les
+/// cellules d'une Table recreees au changement de disque se dessinaient avant
+/// de le recevoir (« No Observable object of type LibraryModel »).
 private struct RowStatus: View {
     let game: Game
-    @Environment(LibraryModel.self) private var library
+    let library: LibraryModel
 
     var body: some View {
         if let status = library.moveStatus(of: game), status.isRunning {

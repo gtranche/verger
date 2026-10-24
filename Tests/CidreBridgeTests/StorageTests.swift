@@ -338,6 +338,26 @@ struct StorageTests {
         #expect(GameDisk.unpluggedName(of: games[1], among: locations) == "SSK SSD")
     }
 
+    /// Le dossier d'un jeu Battle.net dans le prefixe du client est un lien vers
+    /// un disque externe : il compte sur ce disque, meme debranche (lien sans cible).
+    @Test func gameFolderLinkedToAnotherDisk() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lien-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let link = dir.appendingPathComponent("Diablo II Resurrected").path
+        try FileManager.default.createSymbolicLink(atPath: link, withDestinationPath: "/Volumes/SSK SSD (absent)/Jeux Cidre/Battle.net/Diablo II Resurrected")
+        #expect(StorageLocation.gameVolumeName(of: link) == "SSK SSD (absent)")
+        #expect(StorageLocation.gameVolumeName(of: dir.path) == nil)
+        let locations = try decode([StorageLocation].self, """
+        [{"id":"principal","nom":"Ce Mac","chemin":"/a","en_ligne":true,"principal":true},
+         {"id":"ssk","nom":"SSK SSD (absent)","chemin":"/Volumes/SSK SSD (absent)/Jeux Cidre","volume":"SSK SSD (absent)","en_ligne":false}]
+        """)
+        let game = try decode(Game.self, """
+        {"id":"bnet-osi","nom":"Diablo II","plateforme":"windows","lancement":"cidre","source":"battlenet","installe":true,"chemin":"\(link)"}
+        """)
+        #expect(locations[1].holds(game, among: locations) && !locations[0].holds(game, among: locations))
+    }
+
     /// Deux emplacements sur un meme volume : le disque prend celui par defaut.
     @Test func diskWithTwoLocations() throws {
         let locations = try decode([StorageLocation].self, """

@@ -54,10 +54,21 @@ extension StorageLocation {
     public func holds(_ game: Game, among locations: [StorageLocation]) -> Bool {
         guard game.installed else { return false }
         if let id = game.location { return id == self.id }
-        if let volume = Self.volumeName(of: game.path) {
+        if let volume = Self.gameVolumeName(of: game.path) {
             return locations.first { $0.volume == volume }?.id == id
         }
         return isMain
+    }
+
+    /// Le volume du dossier d'un jeu, au bout de son lien s'il en est un : le
+    /// dossier d'un jeu Battle.net, dans le prefixe du client, peut pointer
+    /// sur un disque externe (meme debranche : le lien se lit sans sa cible).
+    public static func gameVolumeName(of path: String) -> String? {
+        guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: path) else {
+            return volumeName(of: path)
+        }
+        let resolved = target.hasPrefix("/") ? target : (path as NSString).deletingLastPathComponent + "/" + target
+        return volumeName(of: resolved)
     }
 
     /// « SSD » pour /Volumes/SSD/... ; `nil` sur le disque du Mac.

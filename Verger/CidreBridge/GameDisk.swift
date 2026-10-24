@@ -112,7 +112,7 @@ public struct GameDisk: Identifiable, Hashable, Sendable {
     /// Le disque d'un jeu Cidre (par son emplacement), sinon d'apres son chemin.
     public static func of(_ game: Game, among disks: [GameDisk]) -> GameDisk? {
         if let id = game.location, let disk = disks.first(where: { $0.location?.id == id }) { return disk }
-        if let volume = StorageLocation.volumeName(of: game.path) {
+        if let volume = StorageLocation.gameVolumeName(of: game.path) {
             return disks.first { $0.location?.volume == volume || $0.volume?.name == volume }
         }
         return disks.first { $0.kind == .thisMac }
@@ -123,7 +123,7 @@ public struct GameDisk: Identifiable, Hashable, Sendable {
     /// Battle.net) ; `nil` si on ne sait pas.
     public static func unpluggedName(of game: Game, among locations: [StorageLocation]) -> String? {
         if let id = game.location, let location = locations.first(where: { $0.id == id }) { return location.name }
-        return StorageLocation.volumeName(of: game.path)
+        return StorageLocation.gameVolumeName(of: game.path)
     }
 
     /// Les jeux hors ligne, par disque debranche (dans l'ordre des noms) ;
