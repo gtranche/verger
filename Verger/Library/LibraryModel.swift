@@ -535,12 +535,11 @@ final class LibraryModel {
     /// si la mise a jour est impossible, il part dans sa version installee et
     /// `updateNotices` dit pourquoi. `skipUpdate` : jouer tout de suite.
     func play(_ game: Game, skipUpdate: Bool = false, acceptCloudLoss: Bool = false) {
-        // Un jeu Blizzard ne tourne pas sans le client connecte : on ouvre le
-        // client, et c'est de lui qu'on lance le jeu.
-        if game.source == .battlenet {
-            openBattleNet()
-            return
-        }
+        // Un jeu Blizzard part aussi par `cidre play bnet-...` : Cidre ouvre le
+        // client connecte avec l'environnement de la fiche du jeu (vkd3d-proton,
+        // KnownDLLs, FEX) et le lui fait lancer. « Jouer » dans le client le
+        // lancerait sans ces reglages (Diablo IV, 24/10 : D3D12CreateDevice
+        // E_NOINTERFACE, « Echec de l'initialisation des systemes graphiques »).
         guard let cli, !running.contains(game.id) else { return }
         // son disque est debranche, ou il est en plein deplacement : Cidre refuserait
         if !game.online {

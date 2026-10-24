@@ -140,18 +140,21 @@ struct GameDetail: View {
                     Button("Mettre à jour sans jouer") { library.download(appid: appid) }
                         .frame(maxWidth: .infinity)
                 } else if game.source == .battlenet {
-                    // Un jeu Blizzard ne tourne pas sans le client connecte : on
-                    // ouvre le client, et on lance le jeu depuis lui.
+                    // `cidre play bnet-...` : Cidre ouvre le client connecte avec les
+                    // reglages de la fiche du jeu, et c'est lui qui lance le jeu.
                     Button {
-                        library.openBattleNet()
+                        library.play(game)
                     } label: {
-                        Label(isRunning ? "En cours…" : "Ouvrir Battle.net", systemImage: "arrow.up.forward.app")
+                        Label(isRunning ? "En cours…" : "Jouer", systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
-                    .disabled(isRunning || library.openingBattleNet)
-                    Text("Les jeux Blizzard se lancent depuis le client Battle.net, connecté : il les installe et les met à jour aussi.")
+                    .disabled(!game.playable || isRunning)
+                    Button("Ouvrir Battle.net") { library.openBattleNet() }
+                        .frame(maxWidth: .infinity)
+                        .disabled(isRunning || library.openingBattleNet)
+                    Text("Cidre lance le jeu par le client Battle.net, connecté, avec les réglages de sa fiche. Ouvre le client pour installer ou mettre à jour un jeu ; « Jouer » dans le client le lancerait sans ces réglages.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

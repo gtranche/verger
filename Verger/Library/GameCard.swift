@@ -104,18 +104,6 @@ struct GameCard: View {
             .padding(.vertical, 6)
             .background(.regularMaterial, in: Capsule())
             .padding(10)
-        } else if hovering && game.playable && game.source == .battlenet {
-            // un jeu Blizzard se lance depuis le client connecte : on ouvre le client
-            Button(action: play) {
-                Label("Ouvrir Battle.net", systemImage: "arrow.up.forward.app")
-                    .font(.callout.weight(.semibold))
-                    .padding(.horizontal, 6)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .help("Les jeux Blizzard se lancent depuis le client Battle.net, connecté.")
-            .padding(10)
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
         } else if hovering && game.playable {
             Button(action: play) {
                 Label("Jouer", systemImage: "play.fill")

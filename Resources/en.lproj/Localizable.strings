@@ -709,9 +709,8 @@
 "Installé" = "Installed";
 "Installe le client Battle.net : son installeur s'ouvre, suis-le, puis connecte-toi dans le client." = "Installs the Battle.net client: its installer opens, follow it, then sign in to the client.";
 "Ouvre le client Battle.net : connecte-toi, puis lance, installe ou mets à jour tes jeux depuis lui." = "Opens the Battle.net client: sign in, then launch, install or update your games from it.";
-"Les jeux Blizzard se lancent depuis le client Battle.net, connecté." = "Blizzard games are launched from the Battle.net client, signed in.";
-"Les jeux Blizzard se lancent depuis le client Battle.net, connecté : il les installe et les met à jour aussi." = "Blizzard games are launched from the Battle.net client, signed in: it also installs and updates them.";
 "Téléchargement de l'installeur…" = "Downloading the installer…";
 "Préparation de Windows…" = "Preparing Windows…";
 "Suis l'installeur dans sa fenêtre…" = "Follow the installer in its window…";
 "Ouverture du client…" = "Opening the client…";
+"Cidre lance le jeu par le client Battle.net, connecté, avec les réglages de sa fiche. Ouvre le client pour installer ou mettre à jour un jeu ; « Jouer » dans le client le lancerait sans ces réglages." = "Cidre launches the game through the signed-in Battle.net client, with the settings from its profile. Open the client to install or update a game; « Play » in the client would launch it without those settings.";
