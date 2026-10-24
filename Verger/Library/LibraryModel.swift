@@ -49,6 +49,21 @@ final class LibraryModel {
     /// Depuis quand chaque jeu en cours tourne (le moment ou Verger l'a vu).
     private var runningSince: [String: Date] = [:]
 
+    /// Le client Battle.net de Cidre (`cidre battlenet etat`) ; `nil` tant
+    /// qu'on ne l'a pas lu, ou avec un Cidre qui ne le connait pas.
+    private(set) var battleNet: BattleNetStatus?
+    /// L'installation du client en cours : sa derniere etape (`nil` avant la premiere).
+    private(set) var battleNetInstall: BattleNetEvent?
+    private(set) var installingBattleNet = false
+    /// Le client vient d'etre ouvert : il met une a deux minutes a paraitre.
+    private(set) var openingBattleNet = false
+
+    /// La tuile Battle.net : toujours la (installe ou non), sauf filtre « Natifs »,
+    /// recherche qui ne la nomme pas, ou Cidre qui ne connait pas Battle.net.
+    var showsBattleNetTile: Bool {
+        battleNet != nil && filter != .native && (search.isEmpty || "Battle.net".localizedCaseInsensitiveContains(search))
+    }
+
     /// Afficher le jeu en cours dans le profil Discord.
     var discordEnabled = UserDefaults.standard.bool(forKey: "discord") {
         didSet {
@@ -219,11 +234,20 @@ final class LibraryModel {
         } catch {
             state = .failed(error.localizedDescription)
         }
-        // le prefixe du client Battle.net, pour les jaquettes de ses jeux
-        // installes hors de lui (un disque externe)
+        // le client Battle.net (sa tuile), et son prefixe pour les jaquettes de
+        // ses jeux installes hors de lui (un disque externe)
+        await refreshBattleNet()
         if Cover.battleNetPrefix == nil, games.contains(where: { $0.source == .battlenet }) {
-            Cover.battleNetPrefix = try? await cli.battleNetStatus().prefix
+            Cover.battleNetPrefix = battleNet?.prefix
         }
+    }
+
+    /// Relit l'etat du client Battle.net : installe, ouvert.
+    func refreshBattleNet() async {
+        guard let cli else { return }
+        let status = try? await cli.battleNetStatus()
+        if status != battleNet { battleNet = status }
+        if status?.open == true { openingBattleNet = false }
     }
 
     func useCidre(at url: URL) async {
@@ -511,6 +535,12 @@ final class LibraryModel {
     /// si la mise a jour est impossible, il part dans sa version installee et
     /// `updateNotices` dit pourquoi. `skipUpdate` : jouer tout de suite.
     func play(_ game: Game, skipUpdate: Bool = false, acceptCloudLoss: Bool = false) {
+        // Un jeu Blizzard ne tourne pas sans le client connecte : on ouvre le
+        // client, et c'est de lui qu'on lance le jeu.
+        if game.source == .battlenet {
+            openBattleNet()
+            return
+        }
         guard let cli, !running.contains(game.id) else { return }
         // son disque est debranche, ou il est en plein deplacement : Cidre refuserait
         if !game.online {
@@ -645,6 +675,8 @@ final class LibraryModel {
         let startedAt = runningSince
         // un Cidre d'avant `cidre running` : on ne sait que ce qu'on a lance
         if let ids = try? await cli?.running() { reported = Set(ids) }
+        // le client Battle.net, ouvert ou ferme depuis
+        if battleNet != nil { await refreshBattleNet() }
         // un deplacement lance ailleurs (au Terminal) : son avancement, et sa fin
         if games.contains(where: { $0.move?.isRunning == true && moveTasks[$0.id] == nil }) { await reload() }
         let now = Date()
@@ -801,17 +833,43 @@ final class LibraryModel {
     /// Ouvre le client Battle.net : c'est lui qui installe, met a jour et
     /// desinstalle ses jeux. La bibliotheque est relue un peu plus tard.
     func openBattleNet() {
-        guard let cli else { return }
+        guard let cli, !openingBattleNet else { return }
+        openingBattleNet = true
         Task {
             do {
                 try await cli.openBattleNet()
             } catch {
+                openingBattleNet = false
                 lastError = error.localizedDescription
+                return
             }
+            await refreshBattleNet()
             for delay in [30, 90] {
                 try? await Task.sleep(for: .seconds(delay))
                 await reload()
             }
+            // le client ne s'est pas montre : la tuile redevient cliquable
+            openingBattleNet = false
+        }
+    }
+
+    /// Installe le client Battle.net (`cidre battlenet installer`) : l'installeur
+    /// officiel s'ouvre, l'utilisateur le suit ; la tuile montre l'etape.
+    func installBattleNet() {
+        guard let cli, !installingBattleNet else { return }
+        installingBattleNet = true
+        battleNetInstall = nil
+        Task {
+            do {
+                try await cli.installBattleNet { event in
+                    Task { @MainActor in self.battleNetInstall = event }
+                }
+            } catch {
+                lastError = error.localizedDescription
+            }
+            installingBattleNet = false
+            battleNetInstall = nil
+            await refreshBattleNet()
         }
     }
 

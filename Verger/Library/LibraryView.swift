@@ -206,7 +206,8 @@ struct LibraryView: View {
         case .loaded:
             // (tous les jeux sur un disque debranche, et masques : la grille
             // vide garde son bandeau, pour les reafficher)
-            if library.visibleGames.isEmpty, !(library.hidesUnpluggedGames && !library.unpluggedGames.isEmpty) {
+            if library.visibleGames.isEmpty, !library.showsBattleNetTile,
+               !(library.hidesUnpluggedGames && !library.unpluggedGames.isEmpty) {
                 ContentUnavailableView {
                     Label(library.games.isEmpty ? "Aucun jeu installé" : "Aucun jeu ne correspond", systemImage: "leaf")
                 } actions: {
@@ -256,6 +257,17 @@ struct LibraryView: View {
     private var grid: some View {
         ScrollView {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 24) {
+                // le client Battle.net, installe ou non : c'est lui qui lance ses jeux
+                if library.showsBattleNetTile, let status = library.battleNet {
+                    BattleNetCard(
+                        status: status,
+                        step: library.battleNetInstall,
+                        installing: library.installingBattleNet,
+                        opening: library.openingBattleNet
+                    ) {
+                        if status.installed { library.openBattleNet() } else { library.installBattleNet() }
+                    }
+                }
                 ForEach(library.visibleGames) { game in
                     // Un bouton, pas un simple geste : la carte reste activable au
                     // clavier et par VoiceOver. Double-clic = jouer.

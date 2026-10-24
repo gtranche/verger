@@ -558,10 +558,66 @@ public struct CidreCLI: Sendable {
         try await json(["battlenet", "etat", "--json"])
     }
 
-    /// Ouvre le client Battle.net (se connecter, installer, mettre a jour ou
-    /// desinstaller un jeu), sans attendre qu'il se ferme.
+    /// Ouvre le client Battle.net (se connecter, lancer, installer, mettre a
+    /// jour ou desinstaller un jeu), sans attendre qu'il se ferme. Cidre l'ouvre
+    /// en Qt logiciel, avec `--in-process-gpu` et la langue du Mac. Un client
+    /// absent (code 5) devient `CidreError.refused` avec la phrase de Cidre.
     public func openBattleNet() async throws {
-        _ = try await checked(["battlenet", "ouvrir"])
+        let result = try await run(["battlenet", "ouvrir", "--json"])
+        guard result.status != 0 else { return }
+        let events = String(decoding: result.stdout, as: UTF8.self)
+            .split(whereSeparator: \.isNewline).compactMap { BattleNetEvent.parse(line: String($0)) }
+        if case let .failed(_, message)? = events.last, !message.isEmpty { throw CidreError.refused(message: message) }
+        throw CidreError.commandFailed(
+            command: "battlenet ouvrir", status: result.status, message: String(decoding: result.stderr, as: UTF8.self))
+    }
+
+    /// `cidre battlenet installer --json` : telecharge l'installeur officiel de
+    /// Blizzard, cree le prefixe et lance l'installeur, que l'utilisateur suit
+    /// dans sa fenetre ; rend la main quand le client est installe. Les etapes
+    /// arrivent par `onEvent`. Un echec devient `CidreError.refused` avec la
+    /// phrase de Cidre. Annuler la tache arrete l'attente, pas l'installeur.
+    public func installBattleNet(onEvent: @escaping @Sendable (BattleNetEvent) -> Void) async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = [executable.path, "battlenet", "installer", "--json"]
+        process.environment = environment
+        process.standardInput = FileHandle.nullDevice
+        let out = Pipe(), err = Pipe()
+        process.standardOutput = out
+        process.standardError = err
+
+        let lines = LineBuffer()
+        let failure = TextTail()
+        let deliver: @Sendable (String) -> Void = { line in
+            guard let event = BattleNetEvent.parse(line: line) else { return }
+            if case let .failed(_, message) = event { failure.append(message) }
+            onEvent(event)
+        }
+        let reader = PipeReader(out) { data in
+            for line in lines.append(data) { deliver(line) }
+        }
+        let tail = TextTail()
+        let errors = PipeReader(err) { data in tail.append(String(decoding: data, as: UTF8.self)) }
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                process.terminationHandler = { _ in continuation.resume() }
+                do { try process.run() } catch { continuation.resume(throwing: error) }
+            }
+        } onCancel: {
+            if process.isRunning { process.terminate() }
+        }
+        reader.finish()
+        errors.finish()
+        if let rest = lines.flush() { deliver(rest) }
+
+        try Task.checkCancellation()
+        guard process.terminationStatus != 0 else { return }
+        let message = failure.lastLines(1)
+        if !message.isEmpty { throw CidreError.refused(message: message) }
+        throw CidreError.commandFailed(
+            command: "battlenet installer", status: process.terminationStatus, message: tail.lastLines(4))
     }
 
     // MARK: Plomberie

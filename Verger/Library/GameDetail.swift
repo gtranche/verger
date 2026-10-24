@@ -139,6 +139,22 @@ struct GameDetail: View {
                         .help("Lance la version installée. La mise à jour sera proposée à nouveau au prochain lancement.")
                     Button("Mettre à jour sans jouer") { library.download(appid: appid) }
                         .frame(maxWidth: .infinity)
+                } else if game.source == .battlenet {
+                    // Un jeu Blizzard ne tourne pas sans le client connecte : on
+                    // ouvre le client, et on lance le jeu depuis lui.
+                    Button {
+                        library.openBattleNet()
+                    } label: {
+                        Label(isRunning ? "En cours…" : "Ouvrir Battle.net", systemImage: "arrow.up.forward.app")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(isRunning || library.openingBattleNet)
+                    Text("Les jeux Blizzard se lancent depuis le client Battle.net, connecté : il les installe et les met à jour aussi.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     Button {
                         library.play(game)
@@ -278,11 +294,9 @@ struct GameDetail: View {
                         .frame(maxWidth: .infinity)
                         .disabled(library.running.contains(game.id))
                 case .battlenet:
-                    // Battle.net installe, met a jour et desinstalle ses jeux lui-meme.
-                    Button("Ouvrir Battle.net") { library.openBattleNet() }
-                        .frame(maxWidth: .infinity)
-                        .disabled(library.running.contains(game.id))
-                        .help("Le client Battle.net installe, met à jour et désinstalle ce jeu.")
+                    // Battle.net installe, met a jour et desinstalle ses jeux
+                    // lui-meme : le bouton du haut ouvre deja le client.
+                    EmptyView()
                 }
             }
         }

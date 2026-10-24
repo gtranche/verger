@@ -65,3 +65,56 @@ private let bnetJSON = """
     let appels = try String(contentsOf: dir.appendingPathComponent("appels.txt"), encoding: .utf8)
     #expect(appels == "ouvert\n")
 }
+
+/// Les lignes de `cidre battlenet installer --json` et `ouvrir --json`.
+@Test func litLesEvenementsBattleNet() {
+    #expect(BattleNetEvent.parse(line: #"{"evenement":"etape","etape":"installeur"}"#) == .step("installeur"))
+    #expect(BattleNetEvent.parse(line: #"{"evenement":"installe","deja":false,"prefixe":"/p"}"#) == .installed(already: false))
+    #expect(BattleNetEvent.parse(line: #"{"evenement":"ouvert","deja":true}"#) == .opened(already: true))
+    #expect(BattleNetEvent.parse(line: #"{"evenement":"erreur","code":"absent","message":"pas la"}"#)
+        == .failed(code: "absent", message: "pas la"))
+    #expect(BattleNetEvent.parse(line: "Telechargement de l'installeur Battle.net...") == nil)
+    #expect(BattleNetEvent.step("telechargement").stepLabel != nil)
+    #expect(BattleNetEvent.installed(already: true).stepLabel == nil)
+}
+
+/// Sur une fausse CLI : l'installation raconte ses etapes ; ouvrir un client
+/// absent rend la phrase de Cidre.
+@Test func installeEtOuvreBattleNet() async throws {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let script = dir.appendingPathComponent("cidre")
+    try """
+        #!/bin/sh
+        case "$1 $2 $3" in
+          "battlenet installer --json")
+            echo '{"evenement":"etape","etape":"telechargement"}'
+            echo "Telechargement..." >&2
+            echo '{"evenement":"etape","etape":"prefixe"}'
+            echo '{"evenement":"etape","etape":"installeur"}'
+            echo '{"evenement":"etape","etape":"client"}'
+            echo '{"evenement":"installe","deja":false,"prefixe":"/p"}' ;;
+          "battlenet ouvrir --json")
+            echo '{"evenement":"erreur","code":"absent","message":"Battle.net n est pas installe dans /p."}'
+            echo "Battle.net n est pas installe dans /p (client introuvable)." >&2; exit 5 ;;
+          *) echo "inconnu : $*" >&2; exit 2 ;;
+        esac
+        """.write(to: script, atomically: true, encoding: .utf8)
+    let cli = try #require(CidreCLI.locate(userChoice: script.path, environment: [:], home: dir))
+    let seen = EventLog()
+    try await cli.installBattleNet { seen.add($0) }
+    #expect(seen.events == [
+        .step("telechargement"), .step("prefixe"), .step("installeur"), .step("client"), .installed(already: false),
+    ])
+    await #expect(throws: CidreError.refused(message: "Battle.net n est pas installe dans /p.")) {
+        try await cli.openBattleNet()
+    }
+}
+
+private final class EventLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var list: [BattleNetEvent] = []
+    func add(_ event: BattleNetEvent) { lock.lock(); list.append(event); lock.unlock() }
+    var events: [BattleNetEvent] { lock.lock(); defer { lock.unlock() }; return list }
+}

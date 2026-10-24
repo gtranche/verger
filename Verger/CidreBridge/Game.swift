@@ -694,3 +694,40 @@ public struct BattleNetStatus: Decodable, Sendable, Equatable {
         case gameCount = "jeux"
     }
 }
+
+/// Une ligne de `cidre battlenet installer --json` (ou `ouvrir --json`).
+public enum BattleNetEvent: Equatable, Sendable {
+    /// `telechargement`, `prefixe`, `installeur` (l'utilisateur suit sa fenetre), `client`.
+    case step(String)
+    /// Le client est installe (`deja` : il l'etait avant).
+    case installed(already: Bool)
+    /// Le client est ouvert (`deja` : il l'etait avant).
+    case opened(already: Bool)
+    case failed(code: String, message: String)
+
+    public static func parse(line: String) -> BattleNetEvent? {
+        guard let data = line.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let kind = object["evenement"] as? String else { return nil }
+        switch kind {
+        case "etape": return (object["etape"] as? String).map { .step($0) }
+        case "installe": return .installed(already: object["deja"] as? Bool ?? false)
+        case "ouvert": return .opened(already: object["deja"] as? Bool ?? false)
+        case "erreur":
+            return .failed(code: object["code"] as? String ?? "", message: object["message"] as? String ?? "")
+        default: return nil
+        }
+    }
+
+    /// Ce qu'on montre sur la tuile Battle.net pendant l'installation.
+    public var stepLabel: String? {
+        guard case let .step(step) = self else { return nil }
+        switch step {
+        case "telechargement": return L10n.string("Téléchargement de l'installeur…")
+        case "prefixe": return L10n.string("Préparation de Windows…")
+        case "installeur": return L10n.string("Suis l'installeur dans sa fenêtre…")
+        case "client": return L10n.string("Ouverture du client…")
+        default: return nil
+        }
+    }
+}

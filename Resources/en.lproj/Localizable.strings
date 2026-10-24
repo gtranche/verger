@@ -658,7 +658,6 @@
 "Stingray" = "Stingray";
 "Godot" = "Godot";
 "Ouvrir Battle.net" = "Open Battle.net";
-"Le client Battle.net installe, met à jour et désinstalle ce jeu." = "The Battle.net client installs, updates and uninstalls this game.";
 "Installé par Battle.net : à déplacer depuis son client" = "Installed by Battle.net: move it from its client";
 "Battle.net" = "Battle.net";
 
@@ -698,3 +697,21 @@
 "%@ jeux sont masqués" = "%@ games are hidden";
 "%@ : %@. Rebranche-les pour jouer." = "%@: %@. Plug them back in to play.";
 "%@ : %@. Rebranche-le pour jouer." = "%@: %@. Plug it back in to play.";
+"1 jeu" = "1 game";
+"%@ jeux" = "%@ games";
+"Installation de Battle.net…" = "Installing Battle.net…";
+"En jeu : %@" = "Playing: %@";
+"Ouvert" = "Open";
+"Ouverture…" = "Opening…";
+"Ouvrir" = "Open";
+"Installation" = "Installing";
+"Pas installé" = "Not installed";
+"Installé" = "Installed";
+"Installe le client Battle.net : son installeur s'ouvre, suis-le, puis connecte-toi dans le client." = "Installs the Battle.net client: its installer opens, follow it, then sign in to the client.";
+"Ouvre le client Battle.net : connecte-toi, puis lance, installe ou mets à jour tes jeux depuis lui." = "Opens the Battle.net client: sign in, then launch, install or update your games from it.";
+"Les jeux Blizzard se lancent depuis le client Battle.net, connecté." = "Blizzard games are launched from the Battle.net client, signed in.";
+"Les jeux Blizzard se lancent depuis le client Battle.net, connecté : il les installe et les met à jour aussi." = "Blizzard games are launched from the Battle.net client, signed in: it also installs and updates them.";
+"Téléchargement de l'installeur…" = "Downloading the installer…";
+"Préparation de Windows…" = "Preparing Windows…";
+"Suis l'installeur dans sa fenêtre…" = "Follow the installer in its window…";
+"Ouverture du client…" = "Opening the client…";
